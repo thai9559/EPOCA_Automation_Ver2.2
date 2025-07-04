@@ -2435,11 +2435,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       //================================<FUNCTION END>==================================
 
       // Gộp logic lấy columns từ bảng tiêu đề và truyền sang bảng SA/MA tiếp theo nếu cần
-      const tables = Array.from(document.querySelectorAll("table"));
+      // Duyệt toàn bộ DOM theo thứ tự xuất hiện của article và table
+      const allNodes = Array.from(
+        document.querySelectorAll("article.question_detail, table")
+      );
       let currentImageColumns = null;
       let currentImageTitle = null;
       const allResults = [];
-      tables.forEach((table, idx) => {
+      let tableIdx = 0;
+      allNodes.forEach((node, idx) => {
+        if (node.tagName === "ARTICLE") {
+          currentImageTitle = null;
+          currentImageColumns = null;
+          return;
+        }
+        // Nếu là table
+        const table = node;
+        // Khai báo columns, title ở đây để dùng cho mọi nhánh
+        let columns = [];
+        let title = null;
+
         // Kiểm tra bảng chỉ có header (không có input)
         const hasOnlyImageHeader =
           table.querySelectorAll("th img").length > 0 &&
@@ -2449,147 +2464,46 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           table.querySelectorAll("input,select,textarea").length === 0;
 
         if (hasOnlyImageHeader || hasOnlyTextHeader) {
-          // Lấy tất cả th chứa img để lấy columns, tách title nếu có waku/box
           const ths = Array.from(table.querySelectorAll("th"));
-          let columns = [];
-          let title = null;
+          columns = [];
+          title = null;
 
-          // Tách riêng xử lý title và columns
-          const rows = Array.from(table.querySelectorAll("tr"));
-
-          // Xử lý title từ tất cả các hàng (nếu có waku/box)
-          for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
-            const row = rows[rowIndex];
-            const ths = Array.from(row.querySelectorAll("th"));
-
-            for (let thIndex = 0; thIndex < ths.length; thIndex++) {
-              const th = ths[thIndex];
-              const thClassList = Array.from(th.classList);
-              const hasWakuOrBoxInTh = thClassList.some(
+          // Lấy title từ <div> có class _waku hoặc _box trong <th>
+          for (const th of ths) {
+            const div = th.querySelector("div");
+            if (div) {
+              const divClassList = Array.from(div.classList);
+              const hasWakuOrBoxInDiv = divClassList.some(
                 (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
               );
-              const div = th.querySelector("div");
-              let hasWakuOrBoxInDiv = false;
-              if (div) {
-                const divClassList = Array.from(div.classList);
-                hasWakuOrBoxInDiv = divClassList.some(
-                  (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
-                );
-              }
-              if (hasWakuOrBoxInTh || hasWakuOrBoxInDiv) {
-                title = th.textContent.replace(/\s+/g, " ").trim();
-                break; // Tìm thấy title thì dừng
+              if (hasWakuOrBoxInDiv) {
+                title = div.textContent.replace(/\s+/g, " ").trim();
+                break;
               }
             }
-            if (title) break; // Tìm thấy title thì dừng
           }
 
-          // Xử lý columns từ hàng thứ 2 (nếu có)
-          if (rows.length > 1) {
-            // KIỂM TRA: Hàng đầu tiên có chỉ chứa số không?
-            const firstRow = rows[0];
-            const firstRowThs = Array.from(firstRow.querySelectorAll("th"));
-            const isFirstRowOnlyNumbers = firstRowThs.every((th) => {
-              const text = th.textContent.replace(/\s+/g, " ").trim();
-              return /^[0-9]+$/.test(text) || text === "";
-            });
-
-            // Chỉ áp dụng logic mới nếu hàng đầu chỉ có số
-            if (isFirstRowOnlyNumbers) {
-              // Tìm hàng có nhiều img với alt có ý nghĩa nhất
-              let bestRow = rows[1]; // Mặc định lấy hàng thứ 2
-
-              for (let i = 1; i < rows.length; i++) {
-                const currentRow = rows[i];
-                const imgCount = currentRow.querySelectorAll("img[alt]").length;
-                const bestRowImgCount =
-                  bestRow.querySelectorAll("img[alt]").length;
-
-                if (imgCount > bestRowImgCount) {
-                  bestRow = currentRow;
-                }
-              }
-
-              const bestRowThs = Array.from(bestRow.querySelectorAll("th"));
-              bestRowThs.forEach((th, index) => {
-                // Bỏ qua th đầu tiên nếu có waku/box (đã được xử lý làm title)
-                if (index === 0) {
-                  const thClassList = Array.from(th.classList);
-                  const hasWakuOrBoxInTh = thClassList.some(
-                    (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
-                  );
-                  const div = th.querySelector("div");
-                  let hasWakuOrBoxInDiv = false;
-                  if (div) {
-                    const divClassList = Array.from(div.classList);
-                    hasWakuOrBoxInDiv = divClassList.some(
-                      (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
-                    );
-                  }
-                  if (hasWakuOrBoxInTh || hasWakuOrBoxInDiv) {
-                    return; // Bỏ qua th đầu tiên nếu có waku/box
-                  }
-                }
-
-                // Xử lý colspan
-                let colspan = parseInt(th.getAttribute("colspan") || "1", 10);
-                let text = "";
-                const img = th.querySelector("img");
-                if (img && img.alt) text = img.alt.trim();
-                else text = th.textContent.replace(/\s+/g, " ").trim();
-                for (let j = 0; j < colspan; j++) {
-                  columns.push(text);
-                }
-              });
-            } else {
-              // LOGIC CŨ: Xử lý tất cả th như cũ
-              ths.forEach((th, i) => {
-                // Bỏ qua th đầu tiên nếu đã có title
-                if (i === 0 && title) return;
-
-                // Xử lý colspan
-                let colspan = parseInt(th.getAttribute("colspan") || "1", 10);
-                let text = "";
-                const img = th.querySelector("img");
-                if (img && img.alt) text = img.alt.trim();
-                else text = th.textContent.replace(/\s+/g, " ").trim();
-                for (let j = 0; j < colspan; j++) {
-                  columns.push(text);
-                }
-              });
+          // Lấy columns từ các <th> chứa <img>
+          for (const th of ths) {
+            const img = th.querySelector("img");
+            if (img && img.alt) {
+              columns.push(img.alt.trim());
             }
-          } else {
-            // Nếu chỉ có 1 hàng, xử lý như cũ nhưng bỏ qua th đầu tiên nếu có title
-            ths.forEach((th, i) => {
-              // Bỏ qua th đầu tiên nếu đã có title
-              if (i === 0 && title) return;
-
-              // Xử lý colspan
-              let colspan = parseInt(th.getAttribute("colspan") || "1", 10);
-              let text = "";
-              const img = th.querySelector("img");
-              if (img && img.alt) text = img.alt.trim();
-              else text = th.textContent.replace(/\s+/g, " ").trim();
-              for (let j = 0; j < colspan; j++) {
-                columns.push(text);
-              }
-            });
           }
 
           columns = columns.filter(Boolean);
           currentImageColumns = columns.length > 0 ? columns : null;
-          currentImageTitle = title;
-          // Không push bảng tiêu đề vào allResults, chỉ lưu để truyền cho bảng tiếp theo
+          currentImageTitle = title || null;
           return;
         }
 
+        // ==== BẮT ĐẦU: Chèn lại logic detect direction, dataBlede, gọi getTableRowsAndColumns ... ====
         // Xét direction ngay từ đầu cho tất cả bảng có input
         const radios = table.querySelectorAll("input[type='radio']");
         const checkboxes = table.querySelectorAll("input[type='checkbox']");
         let tableDirection = null;
         let forceReverse = false;
 
-        // Xét direction cho bảng có radio hoặc checkbox
         if (radios.length > 0 || checkboxes.length > 0) {
           tableDirection = detectTableDirection(table);
 
@@ -2661,94 +2575,75 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           dataBlede = "";
         }
 
-        // Nếu là bảng có radio và đã có currentImageColumns
-        if (
-          radios.length > 0 &&
-          currentImageColumns &&
-          currentImageColumns.length > 0
-        ) {
-          // Truyền currentImageColumns vào getTableRowsAndColumns nếu có dữ liệu
-          const result = getTableRowsAndColumns(
-            table,
-            currentImageColumns,
-            forceReverse
-          );
-
-          // Thêm chiều bảng cho SA/MA (đã xét từ đầu)
-          result.direction = tableDirection;
-
-          // Kế thừa title từ bảng tiêu đề nếu có, chỉ khi columns.length > 0
-          if (
-            currentImageTitle &&
-            !result.title &&
-            result.columns &&
-            result.columns.length > 0
-          ) {
-            result.title = currentImageTitle;
-          }
-
-          let tableName = "";
-          const firstInput = table.querySelector("input,select,textarea");
-          if (firstInput) {
-            tableName = firstInput.id || firstInput.name || "";
-          }
-          if (!tableName) tableName = `Bảng #${idx + 1}`;
-          allResults.push({ tableName, result, dataBlede });
-          return;
-        }
-
-        // Nếu là bảng có checkbox và đã có currentImageColumns
-        if (
-          checkboxes.length > 0 &&
-          currentImageColumns &&
-          currentImageColumns.length > 0
-        ) {
-          // Truyền currentImageColumns vào getTableRowsAndColumns
-          const result = getTableRowsAndColumns(
-            table,
-            currentImageColumns,
-            forceReverse
-          );
-
-          // Thêm chiều bảng cho SA/MA (đã xét từ đầu)
-          result.direction = tableDirection;
-
-          // Kế thừa title từ bảng tiêu đề nếu có, chỉ khi columns.length > 0
-          if (
-            currentImageTitle &&
-            !result.title &&
-            result.columns &&
-            result.columns.length > 0
-          ) {
-            result.title = currentImageTitle;
-          }
-
-          let tableName = "";
-          const firstInput = table.querySelector("input,select,textarea");
-          if (firstInput) {
-            tableName = firstInput.id || firstInput.name || "";
-          }
-          if (!tableName) tableName = `Bảng #${idx + 1}`;
-          allResults.push({ tableName, result, dataBlede });
-          return;
-        }
-
-        // Các bảng khác giữ nguyên logic cũ
-        const result = getTableRowsAndColumns(table);
-
-        // Thêm direction nếu đã xét từ đầu
-        if (tableDirection) {
-          result.direction = tableDirection;
-        }
-
         let tableName = "";
         const firstInput = table.querySelector("input,select,textarea");
         if (firstInput) {
           tableName = firstInput.id || firstInput.name || "";
         }
-        if (!tableName) tableName = `Bảng #${idx + 1}`;
+        if (!tableName) tableName = `Bảng #${tableIdx + 1}`;
+
+        // Gọi lại getTableRowsAndColumns với logic truyền currentImageColumns/forceReverse nếu có
+        let result = null;
+        if (
+          radios.length > 0 &&
+          currentImageColumns &&
+          currentImageColumns.length > 0
+        ) {
+          result = getTableRowsAndColumns(
+            table,
+            currentImageColumns,
+            forceReverse
+          );
+          result.direction = tableDirection;
+          if (
+            currentImageTitle &&
+            !result.title &&
+            result.columns &&
+            result.columns.length > 0
+          ) {
+            result.title = currentImageTitle;
+          }
+        } else if (
+          checkboxes.length > 0 &&
+          currentImageColumns &&
+          currentImageColumns.length > 0
+        ) {
+          result = getTableRowsAndColumns(
+            table,
+            currentImageColumns,
+            forceReverse
+          );
+          result.direction = tableDirection;
+          if (
+            currentImageTitle &&
+            !result.title &&
+            result.columns &&
+            result.columns.length > 0
+          ) {
+            result.title = currentImageTitle;
+          }
+        } else {
+          result = getTableRowsAndColumns(table);
+          if (tableDirection) {
+            result.direction = tableDirection;
+          }
+        }
+        // ==== KẾT THÚC: Chèn lại logic detect direction, dataBlede, gọi getTableRowsAndColumns ... ====
+
+        // Sau khi có result:
+        if (!result.title && currentImageTitle) {
+          result.title = currentImageTitle;
+        }
+        if (
+          (!result.columns || result.columns.length === 0) &&
+          currentImageColumns
+        ) {
+          result.columns = currentImageColumns;
+        }
         allResults.push({ tableName, result, dataBlede });
+        tableIdx++;
       });
+
       // Xuất ra mảng kết quả cho tất cả các bảng
       // Format lại dữ liệu theo yêu cầu
       const formattedResults = allResults.map(
