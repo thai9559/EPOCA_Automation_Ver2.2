@@ -1958,6 +1958,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         externalColumns = null,
         forceReverse = false
       ) {
+        // --- BẮT ĐẦU LOGIC CHECKBOX ĐƠN GIẢN ---
+        const isSimpleCheckboxNoHeader =
+          table.querySelectorAll("th").length === 0 &&
+          table.querySelectorAll("input[type=checkbox]").length > 0;
+        if (isSimpleCheckboxNoHeader) {
+          let columns = [];
+          let rowsMA = [];
+          const checkboxes = table.querySelectorAll("input[type=checkbox]");
+          checkboxes.forEach((checkbox) => {
+            let label = "";
+            let node = checkbox.nextSibling;
+            // Nếu label là text node ngay sau checkbox
+            if (node && node.nodeType === Node.TEXT_NODE) {
+              label = node.textContent.replace(/\s+/g, " ").trim();
+            }
+            // Nếu label là element (ví dụ <div>)
+            else if (node && node.nodeType === Node.ELEMENT_NODE) {
+              label = node.textContent.replace(/\s+/g, " ").trim();
+            }
+            // Nếu không có node, thử tìm <div> trong cùng <td>
+            if (!label) {
+              const td = checkbox.closest("td");
+              if (td) {
+                const div = td.querySelector("div");
+                if (div) {
+                  label = div.textContent.replace(/\s+/g, " ").trim();
+                }
+              }
+            }
+            if (label && !rowsMA.includes(label)) rowsMA.push(label);
+          });
+          let rowsSelect = [];
+          let rank = undefined;
+          return {
+            columns: [],
+            title: null,
+            rowsSA: [],
+            rowsMA,
+            rowsNO: [],
+            rowsSelect,
+            rank,
+          };
+        }
+        // --- KẾT THÚC LOGIC CHECKBOX ĐƠN GIẢN ---
+
         // Lấy columns (header cột) - alt của ảnh trong th nếu có
         let columns = [];
         let title = null;
@@ -2674,6 +2719,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // Bảng radio đơn giản: key1_2 = rowsSA, key2_1 = []
             key1_2 = rowsSA;
             key2_1 = [];
+          } else if (type === "MA" && (!columns || columns.length === 0)) {
+            // Bảng checkbox đơn giản: key1_2 = rowsMA, key2_1 = []
+            key1_2 = rowsMA;
+            key2_1 = [];
           } else if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
             key1_2 = rowsSelect;
           } else if (type === "NO") {
@@ -2688,6 +2737,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           // KHÔNG gán rank vào key2_1 nữa, chỉ giữ logic cũ cho key2_1
           if (type === "SA" && (!columns || columns.length === 0)) {
+            key2_1 = [];
+          } else if (type === "MA" && (!columns || columns.length === 0)) {
             key2_1 = [];
           } else if (direction === "vertical") {
             key2_1 = type === "SA" ? rowsSA : rowsMA;
