@@ -2197,35 +2197,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           allRows.length > 0 &&
           table.querySelectorAll("th").length === 0 &&
           Array.from(table.querySelectorAll("td")).every(
-            (td) =>
-              td.querySelectorAll("input[type=radio]").length === 1 &&
-              !td.hasAttribute("rowspan") &&
-              !td.hasAttribute("colspan")
+            (td) => td.querySelectorAll("input[type=radio]").length === 1
           );
         if (isSimpleRadioNoHeader) {
-          // columns là []
           columns = [];
-          // rowsSA là label của từng radio theo thứ tự xuất hiện
           rowsSA = [];
           const radios = table.querySelectorAll("input[type=radio]");
           radios.forEach((radio) => {
-            const td = radio.closest("td");
-            let label = td ? td.textContent.replace(/\s+/g, " ").trim() : "";
+            let label = "";
+            let node = radio.nextSibling;
+            if (node) {
+              if (node.nodeType === Node.TEXT_NODE) {
+                label = node.textContent.replace(/\s+/g, " ").trim();
+              } else if (node.nodeType === Node.ELEMENT_NODE) {
+                label = node.textContent.replace(/\s+/g, " ").trim();
+              }
+            }
             if (label && !rowsSA.includes(label)) rowsSA.push(label);
           });
-          // Không xử lý tiếp các logic rowsSA khác cho bảng này
           let rowsSelect = [];
           let rank = undefined;
-          const result = {
-            columns,
-            title,
+          // Trả về đúng format: key1_2 = rowsSA, key2_1 = []
+          return {
+            columns: [],
+            title: null,
             rowsSA,
-            rowsMA,
-            rowsNO,
+            rowsMA: [],
+            rowsNO: [],
             rowsSelect,
             rank,
           };
-          return result;
         }
         // Logic mới: bảng radio không có th, mỗi td chứa đúng 1 radio, có thể có colspan, không rowspan
         const isSimpleRadioNoHeaderWithColspan =
@@ -2669,7 +2670,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           else if (rowsNO && rowsNO.length > 0) type = "NO";
 
           // Ưu tiên rowsSelect cho key1_2
-          if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
+          if (type === "SA" && (!columns || columns.length === 0)) {
+            // Bảng radio đơn giản: key1_2 = rowsSA, key2_1 = []
+            key1_2 = rowsSA;
+            key2_1 = [];
+          } else if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
             key1_2 = rowsSelect;
           } else if (type === "NO") {
             key1_2 = rowsNO;
@@ -2682,7 +2687,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
 
           // KHÔNG gán rank vào key2_1 nữa, chỉ giữ logic cũ cho key2_1
-          if (direction === "vertical") {
+          if (type === "SA" && (!columns || columns.length === 0)) {
+            key2_1 = [];
+          } else if (direction === "vertical") {
             key2_1 = type === "SA" ? rowsSA : rowsMA;
           } else if (direction === "horizontal") {
             key2_1 = columns;
