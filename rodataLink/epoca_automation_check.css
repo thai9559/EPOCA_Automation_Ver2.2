@@ -1,0 +1,263 @@
+.epoca_wrapper{
+    width: 450px;
+    height: 550px;
+    background-color: aliceblue;
+    justify-content: center;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+
+    .epoca_title {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+        position: relative;
+        
+        h2 {
+            font-size: 30px;
+            font-weight: 600;
+            margin: 5px auto;
+            color: #43a4f7;
+        }
+    
+        img {
+            width: 30px;
+            height: 30px;
+        }
+    }
+    #fileNameDisplay {
+        font-size: 14px;
+        font-weight: 700;
+        margin: 10px auto;
+    }
+    .content {
+        width: 380px;
+        height: 280px;
+        display: flex;
+        margin: 0 auto;
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-items: center;
+        border: 3px dashed #000;
+        background-color: #fff;
+        padding: 10px;
+    }
+    .content #result_log {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        gap: 10px;
+
+        button{
+            width: 48%;
+            height: 50%;
+            text-align: left;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            border: #fff;
+            letter-spacing: 2px;
+            border-radius: 10px;
+            padding: 5px;
+            cursor: pointer;
+        }
+        #savedData {
+            background-color: #43a4f7;
+            display: flex;
+        }
+        #clearData {
+            background-color: red;
+            display: flex;
+        }
+        #inputData{
+            background-color: goldenrod;
+            display: flex;
+        }
+        #clearInput{
+            background-color: red;
+            display: flex;
+        }
+    }
+
+    .content #done_log {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        gap: 10px;
+
+        button {
+            width: 48%;
+            height: 65%;
+            text-align: left;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            border: #fff;
+            letter-spacing: 2px;
+            border-radius: 10px;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        #doneIdData {
+            background-color: #43a4f7;
+            display: flex;
+        }
+
+        #clearDoneIdData {
+            background-color: red;
+            display: flex;
+        }
+    }
+    .content .autoCheck_Section {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 10px;
+
+
+        /* ======================== Class to see updating ======================*/
+        .developingBtn {
+            background-color: darkgray;
+        }
+    }
+    .content .autoCheck_Section button{
+        width: 90%;
+        height: 80px;
+        font-size: 20px;
+        font-weight: 700;
+        border-radius: 10px;
+        text-wrap: nowrap;
+        background-color: aqua;
+        cursor: pointer;
+
+        p {
+            padding: 5px;
+        }
+    }
+    .content .autoCheck_Section .active {
+        background-color: bisque;
+    }
+
+    #resetStorage{
+        background-color: brown;
+    }
+    #controls {
+        
+        button {
+            width: 25%;
+            margin: 5px;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            border: #fff;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+        #startBtn{
+            background-color: aqua;
+        }
+        #pauseBtn{
+            background-color: cadetblue;
+        }
+        #stopBtn {
+            background-color: brown;
+        }
+    }
+
+    #datakey_control {
+
+        button {
+            width: 25%;
+            margin: 5px;
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            border: #fff;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+
+        #createDatakeyBtn {
+            background-color: aqua;
+        }
+    }
+
+    .hidden {
+        display: none;
+    }
+    
+    #progressContainer {
+        display: none;
+        text-align: center;
+        margin-top: 10px;
+        
+        p{
+            margin: 0;
+        }
+        
+        progress {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 80%;
+            height: 15px;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #e0e0e0;
+        }
+    
+        progress::-webkit-progress-bar {
+            background-color: #e0e0e0;
+            border-radius: 5px;
+        }
+    
+        progress::-webkit-progress-value {
+            background-color: #4CAF50;
+            border-radius: 5px;
+        }
+    
+        progress::-moz-progress-bar {
+            background-color: #4CAF50;
+            border-radius: 5px;
+        }
+    }
+    .content_detail{
+        display: flex;
+        justify-content: center;
+    }
+
+    #backSection {
+        display: none;
+        text-align: center;
+        position: absolute;
+        top: -5px;
+        left: 5px;
+    }
+
+    #backBtn {
+        background-color: #24c5f1;
+        color: #ffffff;
+        font-size: 16px;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.3s, transform 0.2s;
+        box-shadow: 0 2px 6px rgba(15, 180, 221, 0.15);
+    }
+
+    #backBtn:hover {
+        background-color: #636e72;
+        transform: scale(1.05);
+    }
+}
+         

@@ -1,0 +1,273 @@
+{
+    "baseUrl": "https://epoca-q.com/q/20250321/",
+    "data" : [
+        {
+            "blade": "First Page",
+            "type": "FIRSTPAGE"
+        },
+        {
+            "blade": "SC0",
+            "type": "SC0"
+        },
+        {
+            "blade": "SC1",
+            "type": "SA1"
+        },
+        {
+            "blade": "SC2",
+            "type": "SA1"
+        },
+        {
+            "blade": "SC3",
+            "type": "SA"
+        },
+        {
+            "blade": "SC4",
+            "type": "SA"
+        },
+        {
+            "blade": "SC5",
+            "type": "NO"
+        },
+        {
+            "blade": "SC6",
+            "type": "NO",
+            "saikei": ">="
+        },
+        {
+            "blade": "SC7",
+            "type": "NO",
+            "saikei": ">="
+        },
+        {
+            "blade": "SC8",
+            "type": "SA1"
+        },
+        {
+            "blade": "SC9",
+            "type": "NO"
+        },
+        {
+            "blade": "Q1",
+            "type": "NO",
+            "saikei": ">="
+        },
+        {
+            "blade": "Q2",
+            "type": "NO",
+            "gokei": "="
+        },
+        {
+            "blade": "Q3",
+            "type": "NO",
+            "saikei": ">="
+        },
+        {
+            "blade": "Q4",
+            "type": "NO",
+            "gokei": "="
+        },
+        {
+            "blade": "Q5",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q6",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q7",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q8",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q9",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "NextPage",
+            "type": "NP"
+        },
+        {
+            "blade": "Q10",
+            "type": "MA"
+        },
+        {
+            "blade": "Q11",
+            "type": "NO",
+            "saikei": ">="
+        },
+        {
+            "blade": "Q12",
+            "type": "NO",
+            "gokei": ">="
+        },
+        {
+            "blade": "Q13",
+            "type": "NO",
+            "gokei": ">="
+        },
+        {
+            "blade": "Q14",
+            "type": "NO",
+            "saikei": ">="
+        },
+        {
+            "blade": "Q15",
+            "type": "NO",
+            "gokei": "="
+        },
+        {
+            "blade": "Q16",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "NextPage",
+            "type": "NP"
+        },
+        {
+            "blade": "Q17",
+            "type": "NO",
+            "gokei100": ">="
+        },
+        {
+            "blade": "Q18",
+            "type": "NO",
+            "gokei": "="
+        },
+        {
+            "blade": "Q19",
+            "type": "SA"
+        },
+        {
+            "blade": "Q20",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q21",
+            "type": "NO",
+            "gokei100": ">="
+        },
+        {
+            "blade": "Q22",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q23",
+            "type": "NO",
+            "gokei100": ">="
+        },
+        {
+            "blade": "Q24",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q25",
+            "type": "NO",
+            "gokei100": ">="
+        },
+        {
+            "blade": "Profile",
+            "type": "NP"
+        },
+        {
+            "blade": "Profile",
+            "type": "NP"
+        },
+        {
+            "blade": "Profile",
+            "type": "NP"
+        },
+        {
+            "blade": "Q26",
+            "type": "SA"
+        },
+        {
+            "blade": "Q27",
+            "type": "MA"
+        },
+        {
+            "blade": "Q28",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q29",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q30",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q31",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q32",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q33",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q34",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q35",
+            "type": "SA"
+        },
+        {
+            "blade": "NextPage",
+            "type": "NP"
+        },
+        {
+            "blade": "Q36",
+            "type": "MA"
+        },
+        {
+            "blade": "Q37",
+            "type": "SA"
+        },
+        {
+            "blade": "Q38",
+            "type": "SA"
+        },
+        {
+            "blade": "Q39",
+            "type": "NO"
+        },
+        {
+            "blade": "Q40",
+            "type": "SA"
+        },
+        {
+            "blade": "Q41",
+            "type": "SA"
+        },
+        {
+            "blade": "F",
+            "type": "F"
+        }
+    ]
+}

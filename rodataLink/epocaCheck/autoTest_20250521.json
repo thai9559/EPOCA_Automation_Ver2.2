@@ -1,0 +1,232 @@
+{
+  "baseUrl": "https://epoca-p.com/q/20250521/",
+  "data": [
+    {
+      "blade": "FIRSTPAGE",
+      "type": "FIRSTPAGE"
+    },
+    {
+      "blade": "SC0_1",
+      "type": "SC0"
+    },
+    {
+      "blade": "SC0_2",
+      "type": "SA"
+    },
+    {
+      "blade": "SC1",
+      "type": "SA"
+    },
+    {
+      "blade": "SC2",
+      "type": "NO"
+    },
+    {
+      "blade": "SC3",
+      "type": "NO"
+    },
+    {
+      "blade": "SC4",
+      "type": "NO",
+      "saikei": ">="
+    },
+    {
+      "blade": "SC4-2",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "SC5",
+      "type": "MA"
+    },
+    {
+      "blade": "SC6",
+      "type": "NO",
+      "saikei": ">="
+    },
+    {
+      "blade": "SC7",
+      "type": "NO",
+      "saikei": ">=",
+      "gokei": ">="
+    },
+    {
+      "blade": "SC8",
+      "type": "NO",
+      "saikei": ">="
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q1",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q2",
+      "type": "MA"
+    },
+    {
+      "blade": "Q3",
+      "type": "SA"
+    },
+    {
+      "blade": "Q4",
+      "type": "SA"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q4-1",
+      "type": "SA"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q5",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q6",
+      "type": "MA"
+    },
+    {
+      "blade": "Q7",
+      "type": "SA"
+    },
+    {
+      "blade": "Q8",
+      "type": "SA"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q9",
+      "type": "SA"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q9-1",
+      "type": "SA"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q10",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q11",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q12",
+      "type": "SA, JOUI"
+    },
+    {
+      "blade": "Q13",
+      "type": "SA"
+    },
+    {
+      "blade": "Q14",
+      "type": "SA"
+    },
+    {
+      "blade": "Q15",
+      "type": "SA"
+    },
+    {
+      "blade": "Q16",
+      "type": "MA"
+    },
+    {
+      "blade": "Q17",
+      "type": "SA, SA"
+    },
+    {
+      "blade": "Q18",
+      "type": "MA"
+    },
+    {
+      "blade": "Q19",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q20",
+      "type": "MA"
+    },
+    {
+      "blade": "Q21",
+      "type": "MA"
+    },
+    {
+      "blade": "Q22",
+      "type": "SA"
+    },
+    {
+      "blade": "Q23",
+      "type": "MA"
+    },
+    {
+      "blade": "Q24",
+      "type": "SELECT"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q25",
+      "type": "SA"
+    },
+    {
+      "blade": "F",
+      "type": "SA, SELECT, MA"
+    },
+    {
+      "blade": "F8",
+      "type": "SA"
+    },
+    {
+      "blade": "THANKPAGE",
+      "type": "THANKPAGE"
+    }
+  ]
+}

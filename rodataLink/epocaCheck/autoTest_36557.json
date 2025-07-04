@@ -1,0 +1,170 @@
+{
+  "baseUrl": "https://epoca-p.com/q/36557/",
+  "data": [
+    {
+      "blade": "FIRSTPAGE",
+      "type": "FIRSTPAGE"
+    },
+    {
+      "blade": "SC0",
+      "type": "SC0"
+    },
+    {
+      "blade": "SC1",
+      "type": "SA"
+    },
+    {
+      "blade": "SC2",
+      "type": "SA"
+    },
+    {
+      "blade": "SC3",
+      "type": "SA"
+    },
+    {
+      "blade": "SC4",
+      "type": "SA"
+    },
+    {
+      "blade": "SC5",
+      "type": "NO",
+      "input": ">"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q1",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q2",
+      "type": "NO",
+      "saikei": ">="
+    },
+    {
+      "blade": "Q3",
+      "type": "MA"
+    },
+    {
+      "blade": "Q4",
+      "type": "SELECT, SONOTA"
+    },
+    {
+      "blade": "Q5",
+      "type": "SELECT, SONOTA"
+    },
+    {
+      "blade": "Q6",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q7",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q8",
+      "type": "SA"
+    },
+    {
+      "blade": "Q9",
+      "type": "SA"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q10",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q11",
+      "type": "SA"
+    },
+    {
+      "blade": "Q12",
+      "type": "SA"
+    },
+    {
+      "blade": "Q13",
+      "type": "SA"
+    },
+    {
+      "blade": "Q14",
+      "type": "NO",
+      "gokei100": "="
+    },
+    {
+      "blade": "Q15",
+      "type": "MA, SA"
+    },
+    {
+      "blade": "Q16",
+      "type": "SELECT, SONOTA"
+    },
+    {
+      "blade": "Q17",
+      "type": "SELECT, SONOTA"
+    },
+    {
+      "blade": "Q18",
+      "type": "SA"
+    },
+    {
+      "blade": "Q19",
+      "type": "NO",
+      "gokei100": "="
+    },
+    {
+      "blade": "Q20",
+      "type": "NO"
+    },
+    {
+      "blade": "Q21",
+      "type": "SA"
+    },
+    {
+      "blade": "Q22",
+      "type": "MA, SELECT, SONOTA"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "Q23",
+      "type": "SA"
+    },
+    {
+      "blade": "Q24",
+      "type": "MA"
+    },
+    {
+      "blade": "Q25",
+      "type": "MA"
+    },
+    {
+      "blade": "Q26",
+      "type": "NO",
+      "gokei100": "="
+    },
+    {
+      "blade": "F",
+      "type": "SA, MA, SELECT"
+    },
+    {
+      "blade": "THANKPAGE",
+      "type": "THANKPAGE"
+    }
+  ]
+}

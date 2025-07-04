@@ -1,0 +1,122 @@
+{
+    "baseUrl": "https://epoca-p.com/q/36569/",
+    "data": [
+        {
+            "blade": "First Page",
+            "type": "FIRSTPAGE"
+        },
+        {
+            "blade": "S0_1",
+            "type": "SC0"
+        },
+        {
+            "blade": "S0_2",
+            "type": "SA"
+        },
+        {
+            "blade": "S1",
+            "type": "SA"
+        },
+        {
+            "blade": "S2",
+            "type": "SA"
+        },
+        {
+            "blade": "S3",
+            "type": "SA"
+        },
+        {
+            "blade": "S4",
+            "type": "MA"
+        },
+        {
+            "blade": "S5",
+            "type": "SA"
+        },
+        {
+            "blade": "S6",
+            "type": "MA"
+        },
+        {
+            "blade": "S7",
+            "type": "NO"
+        },
+        {
+            "blade": "Q1",
+            "type": "NO",
+            "input": ">="
+        },
+        {
+            "blade": "Q2",
+            "type": "SA"
+        },
+        {
+            "blade": "Q3",
+            "type": "NO",
+            "input": "="
+        },
+        {
+            "blade": "Q4",
+            "type": "NO",
+            "ygokeiSpecial": "="
+        },
+        {
+            "blade": "Q5",
+            "type": "SA"
+        },
+        {
+            "blade": "Q6",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q7",
+            "type": "SA"
+        },
+        {
+            "blade": "Q8",
+            "type": "MA, JOUI"
+        },
+        {
+            "blade": "Q9",
+            "type": "SA"
+        },
+        {
+            "blade": "Q10",
+            "type": "NO",
+            "gokei100": "="
+        },
+        {
+            "blade": "Q11",
+            "type": "SA"
+        },
+        {
+            "blade": "Q12",
+            "type": "SA"
+        },
+        {
+            "blade": "Q13",
+            "type": "SA"
+        },
+        {
+            "blade": "Q14",
+            "type": "MA"
+        },
+        {
+            "blade": "Q15",
+            "type": "SA, JOUI"
+        },
+        {
+            "blade": "Q16",
+            "type": "SA"
+        },
+        {
+            "blade": "S8",
+            "type": "SA"
+        },
+        {
+            "blade": "THANKPAGE",
+            "type": "THANKPAGE"
+        }
+    ]
+}

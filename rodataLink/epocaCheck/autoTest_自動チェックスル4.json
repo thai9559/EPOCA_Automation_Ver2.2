@@ -1,0 +1,180 @@
+{
+  "baseUrl": "https://epoca-q.com/q/20250415/",
+  "data": [
+    {
+      "blade": "FIRSTPAGE",
+      "type": "FIRSTPAGE"
+    },
+    {
+      "blade": "NP",
+      "type": "NP"
+    },
+    {
+      "blade": "A1",
+      "type": "SA1"
+    },
+    {
+      "blade": "A2",
+      "type": "SA1"
+    },
+    {
+      "blade": "SC1",
+      "type": "SA"
+    },
+    {
+      "blade": "SC2",
+      "type": "SA"
+    },
+    {
+      "blade": "SC3",
+      "type": "SA"
+    },
+    {
+      "blade": "SC4",
+      "type": "SA"
+    },
+    {
+      "blade": "SC5",
+      "type": "SA1"
+    },
+    {
+      "blade": "SC6",
+      "type": "SA1"
+    },
+    {
+      "blade": "SC7",
+      "type": "SA"
+    },
+    {
+      "blade": "SC8",
+      "type": "SA"
+    },
+    {
+      "blade": "SC9",
+      "type": "SELECT"
+    },
+    {
+      "blade": "SC10",
+      "type": "NO",
+      "ygokeiSpecial": "<="
+    },
+    {
+      "blade": "Q1",
+      "type": "MA"
+    },
+    {
+      "blade": "Q2",
+      "type": "SA, MA"
+    },
+    {
+      "blade": "Q2SQ1",
+      "type": "SA, MA"
+    },
+    {
+      "blade": "Q2SQ2",
+      "type": "SA, MA"
+    },
+    {
+      "blade": "Q3",
+      "type": "SA"
+    },
+    {
+      "blade": "Q4",
+      "type": "SA"
+    },
+    {
+      "blade": "Q5",
+      "type": "SA"
+    },
+    {
+      "blade": "Q6",
+      "type": "NO"
+    },
+    {
+      "blade": "Q7",
+      "type": "NO",
+      "gokei": "="
+    },
+    {
+      "blade": "Q8",
+      "type": "SA"
+    },
+    {
+      "blade": "Q8SQ1",
+      "type": "SA, MA"
+    },
+    {
+      "blade": "Q8SQ2",
+      "type": "SA, MA"
+    },
+    {
+      "blade": "Q9",
+      "type": "SA, MA"
+    },
+    {
+      "blade": "Q10",
+      "type": "SA"
+    },
+    {
+      "blade": "Q11",
+      "type": "MA"
+    },
+    {
+      "blade": "Q12",
+      "type": "NO"
+    },
+    {
+      "blade": "Q12-1",
+      "type": "MA"
+    },
+    {
+      "blade": "Q13",
+      "type": "NO"
+    },
+    {
+      "blade": "Q14",
+      "type": "MA"
+    },
+    {
+      "blade": "Q15",
+      "type": "MA"
+    },
+    {
+      "blade": "Q16",
+      "type": "NO",
+      "tgokeiSpecial": "<="
+    },
+    {
+      "blade": "Q17",
+      "type": "SA"
+    },
+    {
+      "blade": "Q18",
+      "type": "SA"
+    },
+    {
+      "blade": "Q19",
+      "type": "SA"
+    },
+    {
+      "blade": "Q20",
+      "type": "SA"
+    },
+    {
+      "blade": "Q21",
+      "type": "SA"
+    },
+    {
+      "blade": "Q22",
+      "type": "SA"
+    },
+    {
+      "blade": "Q23",
+      "type": "SA"
+    },
+    {
+      "blade": "THANKPAGE",
+      "type": "THANKPAGE"
+    }
+  ]
+}

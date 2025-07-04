@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KGS Tech</title>
+    <script type="module" src="epoca_automation_check.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="libs/sweetalert2.min.js"></script>
+    <link rel="stylesheet" href="epoca_automation_check.css">
+</head>
+
+<body>
+    <main>
+        <section class="epoca_wrapper">
+            <div id="backSection" style="display: none; margin-top: 10px; text-align: center;">
+                <button id="backBtn" style="display: flex; align-items: center; gap: 5px;" title="戻る">
+                    <img src="https://img.icons8.com/?size=100&id=Zeurb1Id9pDh&format=png&color=000000" alt="icon" style="width: 20px; height: 20px;">
+                </button>
+            </div>
+            <div class="epoca_title">
+                <div>
+                    <img src="icon.png" alt="Logo">
+                </div>
+                <div>
+                    <h2>Automation</h2>
+                </div>
+            </div>
+
+            <div class="content" id="mainButtons">
+                <div class="autoCheck_Section">
+                    <button id="roData">
+                        <p>ローデータ</p>
+                    </button>
+                    <button id="autoCheck">
+                        <p>自動チェックスル</p>
+                    </button>
+                    <button id="createDatakeyId">
+                        <p>Datakey自動作成スル</p>
+                    </button>
+                </div>     
+
+                <div id="done_log" style="display: none;">
+                    <button id="doneIdData">
+                        <img src="result_log.png" alt="result_log Image">
+                        完了ID一覧
+                    </button>
+                    <button id="clearDoneIdData">
+                        <img src="delete_icon.png" alt="delete_icon Image">
+                        完了ID削除
+                    </button>
+                </div>
+                <div id="result_log" style="display: none;">
+                    <button id="savedData">
+                        <img src="result_log.png" alt="result_log Image">
+                        結果を表示
+                    </button>
+                    <button id="clearData">
+                        <img src="delete_icon.png" alt="delete_icon Image">
+                        結果を削除
+                    </button>
+                    <button id="inputData">
+                        <img src="result_log.png" alt="result_log Image">
+                        データの取得を表示
+                    </button>
+                    <button id="clearInput">
+                        <img src="delete_icon.png" alt="delete_icon Image">
+                        データの取得を削除
+                    </button>
+                </div>
+            </div>
+
+            <div id="progressContainer" style="display:none;">
+                <progress id="progressBar" value="0" max="100"></progress>
+                <p id="progressText">進捗: 0%</p>
+            </div>
+
+            <div class="content_detail">
+                <div class="hidden" id="jsFileId">
+                    <h3>Jsonファイル :</h3>
+                    <div id="fileNameDisplay"></div>
+                    <div id="selectedIdDisplay" style="margin-top: 8px; font-weight: bold;"></div>
+                </div>
+            </div>
+            <div id="idInputContainer" class="hidden">
+                <label>開始ID: <input type="number" id="idStartInput" placeholder="例：8400" min="5000" max="9000" maxlength="4" /></label>
+                <label>件数: <input type="number" id="idCountInput" placeholder="例：16" min="1" max="100" maxlength="3" /></label>
+                <button id="confirmIdBtn">確認</button>
+            </div>
+
+            <div id="controls" class="hidden">
+                <button id="startBtn">スタート</button>
+                <button id="pauseBtn" class="hidden">ポーズ</button>
+                <button id="stopBtn">終了</button>
+            </div>
+
+            <!-- DataKey controls -->
+            <div id="datakey_control" class="hidden">
+                <button id="createDatakeyBtn">クリエート</button>
+            </div>
+        </section>
+    </main>
+    <script>
+        const roDataBtn = document.getElementById("roData");
+        const autoCheckBtn = document.getElementById("autoCheck");
+        const createDatakeyBtn = document.getElementById("autoCheck");
+        const backBtn = document.getElementById("backBtn");
+
+        const backSection = document.getElementById("backSection");
+        const idInputContainer = document.getElementById("idInputContainer");
+        const jsFileId = document.getElementById("jsFileId");
+        const controls = document.getElementById("controls");
+        const progressContainer = document.getElementById("progressContainer");
+        const doneLog = document.getElementById("done_log");
+        const resultLog = document.getElementById("result_log");
+
+        function goToFunctionScreen() {
+            backSection.style.display = "block";
+            idInputContainer.classList.remove("hidden");
+            jsFileId.classList.remove("hidden");
+            controls.classList.remove("hidden");
+            progressContainer.style.display = "block";
+            doneLog.style.display = "block";
+            resultLog.style.display = "block";
+        }
+
+        function goBackToHome() {
+            backSection.style.display = "none";
+            idInputContainer.classList.add("hidden");
+            jsFileId.classList.add("hidden");
+            controls.classList.add("hidden");
+            progressContainer.style.display = "none";
+            doneLog.style.display = "none";
+            resultLog.style.display = "none";
+        }
+
+        roDataBtn.addEventListener("click", goToFunctionScreen);
+        autoCheckBtn.addEventListener("click", goToFunctionScreen);
+        createDatakeyBtn.addEventListener("click", goToFunctionScreen);
+        backBtn.addEventListener("click", goBackToHome);
+    </script>
+</body>
+</html>
