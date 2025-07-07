@@ -1958,51 +1958,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         externalColumns = null,
         forceReverse = false
       ) {
-        // --- BẮT ĐẦU LOGIC CHECKBOX ĐƠN GIẢN ---
-        const isSimpleCheckboxNoHeader =
-          table.querySelectorAll("th").length === 0 &&
-          table.querySelectorAll("input[type=checkbox]").length > 0;
-        if (isSimpleCheckboxNoHeader) {
-          let columns = [];
-          let rowsMA = [];
-          const checkboxes = table.querySelectorAll("input[type=checkbox]");
-          checkboxes.forEach((checkbox) => {
-            let label = "";
-            let node = checkbox.nextSibling;
-            // Nếu label là text node ngay sau checkbox
-            if (node && node.nodeType === Node.TEXT_NODE) {
-              label = node.textContent.replace(/\s+/g, " ").trim();
-            }
-            // Nếu label là element (ví dụ <div>)
-            else if (node && node.nodeType === Node.ELEMENT_NODE) {
-              label = node.textContent.replace(/\s+/g, " ").trim();
-            }
-            // Nếu không có node, thử tìm <div> trong cùng <td>
-            if (!label) {
-              const td = checkbox.closest("td");
-              if (td) {
-                const div = td.querySelector("div");
-                if (div) {
-                  label = div.textContent.replace(/\s+/g, " ").trim();
-                }
-              }
-            }
-            if (label && !rowsMA.includes(label)) rowsMA.push(label);
-          });
-          let rowsSelect = [];
-          let rank = undefined;
-          return {
-            columns: [],
-            title: null,
-            rowsSA: [],
-            rowsMA,
-            rowsNO: [],
-            rowsSelect,
-            rank,
-          };
-        }
-        // --- KẾT THÚC LOGIC CHECKBOX ĐƠN GIẢN ---
-
         // Lấy columns (header cột) - alt của ảnh trong th nếu có
         let columns = [];
         let title = null;
@@ -2242,36 +2197,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           allRows.length > 0 &&
           table.querySelectorAll("th").length === 0 &&
           Array.from(table.querySelectorAll("td")).every(
-            (td) => td.querySelectorAll("input[type=radio]").length === 1
+            (td) =>
+              td.querySelectorAll("input[type=radio]").length === 1 &&
+              !td.hasAttribute("rowspan") &&
+              !td.hasAttribute("colspan")
           );
         if (isSimpleRadioNoHeader) {
+          // columns là []
           columns = [];
+          // rowsSA là label của từng radio theo thứ tự xuất hiện
           rowsSA = [];
           const radios = table.querySelectorAll("input[type=radio]");
           radios.forEach((radio) => {
-            let label = "";
-            let node = radio.nextSibling;
-            if (node) {
-              if (node.nodeType === Node.TEXT_NODE) {
-                label = node.textContent.replace(/\s+/g, " ").trim();
-              } else if (node.nodeType === Node.ELEMENT_NODE) {
-                label = node.textContent.replace(/\s+/g, " ").trim();
-              }
-            }
+            const td = radio.closest("td");
+            let label = td ? td.textContent.replace(/\s+/g, " ").trim() : "";
             if (label && !rowsSA.includes(label)) rowsSA.push(label);
           });
+          // Không xử lý tiếp các logic rowsSA khác cho bảng này
           let rowsSelect = [];
           let rank = undefined;
-          // Trả về đúng format: key1_2 = rowsSA, key2_1 = []
-          return {
-            columns: [],
-            title: null,
+          const result = {
+            columns,
+            title,
             rowsSA,
-            rowsMA: [],
-            rowsNO: [],
+            rowsMA,
+            rowsNO,
             rowsSelect,
             rank,
           };
+          return result;
         }
         // Logic mới: bảng radio không có th, mỗi td chứa đúng 1 radio, có thể có colspan, không rowspan
         const isSimpleRadioNoHeaderWithColspan =
@@ -2715,15 +2669,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           else if (rowsNO && rowsNO.length > 0) type = "NO";
 
           // Ưu tiên rowsSelect cho key1_2
-          if (type === "SA" && (!columns || columns.length === 0)) {
-            // Bảng radio đơn giản: key1_2 = rowsSA, key2_1 = []
-            key1_2 = rowsSA;
-            key2_1 = [];
-          } else if (type === "MA" && (!columns || columns.length === 0)) {
-            // Bảng checkbox đơn giản: key1_2 = rowsMA, key2_1 = []
-            key1_2 = rowsMA;
-            key2_1 = [];
-          } else if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
+          if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
             key1_2 = rowsSelect;
           } else if (type === "NO") {
             key1_2 = rowsNO;
@@ -2736,11 +2682,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
 
           // KHÔNG gán rank vào key2_1 nữa, chỉ giữ logic cũ cho key2_1
-          if (type === "SA" && (!columns || columns.length === 0)) {
-            key2_1 = [];
-          } else if (type === "MA" && (!columns || columns.length === 0)) {
-            key2_1 = [];
-          } else if (direction === "vertical") {
+          if (direction === "vertical") {
             key2_1 = type === "SA" ? rowsSA : rowsMA;
           } else if (direction === "horizontal") {
             key2_1 = columns;
