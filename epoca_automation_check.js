@@ -2125,17 +2125,36 @@ async function createDatakey() {
       }
     });
 
-    // Generate CSV content
-    let csvContent = "";
+    // Generate Excel file using ExcelJS
+    const workbook = new window.ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Datakey");
 
     // Add headers
     const headers = ["確認", "key2数", "post_key"];
     for (let i = 1; i <= 5; i++) headers.push(`key1-${i}`);
     for (let i = 1; i <= 22; i++) headers.push(`key2-${i}`);
-    csvContent += headers.join(",") + "\n";
+    worksheet.addRow(headers);
+
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFD9EAD3" }, // light green
+      };
+      cell.font = { name: "Arial" };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+      cell.border = {
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
 
     // Add data rows
-    formattedData.forEach((row) => {
+    formattedData.forEach((row, idx) => {
       const key2Values = row.key2;
       const key2Count = key2Values.filter(
         (value) => value && value.toString().trim() !== ""
@@ -2150,22 +2169,89 @@ async function createDatakey() {
           .fill("")
           .map((_, i) => key2Values[i] || ""), // key2-1 to key2-22
       ];
-
-      csvContent += rowData.join(",") + "\n";
+      const addedRow = worksheet.addRow(rowData);
+      // Zebra stripe: even row (ExcelJS index starts at 1, so +1 for data)
+      const isEven = idx % 2 === 0;
+      addedRow.eachCell((cell, colNumber) => {
+        // Border for all cells
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+        // Cột key2-1 (cột số 9): nền vàng nhạt
+        if (colNumber === 9) {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFFF2CC" }, // light yellow
+          };
+        } else if (colNumber !== 3) {
+          // Zebra stripe (trừ cột post_key đã có màu riêng)
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: isEven ? "FFFFFFFF" : "FFD9EAD3" }, // white or light green
+          };
+        }
+        // Căn lề: header đã căn giữa, dữ liệu căn trái (hoặc center nếu muốn)
+        cell.alignment = { vertical: "middle", horizontal: "left" };
+        // Font Arial cho toàn bộ dữ liệu
+        cell.font = { name: "Arial" };
+      });
+      // Style post_key cell
+      const postKeyCell = addedRow.getCell(3); // 1-based index
+      if (typeof row.post_key === "string") {
+        if (row.post_key.includes("SA")) {
+          postKeyCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFB7E1FF" }, // light blue
+          };
+        } else if (row.post_key.includes("MA")) {
+          postKeyCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFFB7DD" }, // light pink
+          };
+        } else {
+          // Nếu không phải SA/MA thì zebra stripe như các cột khác
+          postKeyCell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: isEven ? "FFFFFFFF" : "FFD9EAD3" },
+          };
+        }
+        // Font Arial cho post_key
+        postKeyCell.font = { name: "Arial" };
+      }
     });
 
-    // Create and download CSV
-    const blob = new Blob(["\ufeff" + csvContent], {
-      type: "text/csv;charset=utf-8",
+    // Auto width for columns
+    worksheet.columns.forEach((column) => {
+      let maxLength = 10;
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const cellValue = cell.value ? cell.value.toString() : "";
+        maxLength = Math.max(maxLength, cellValue.length);
+      });
+      column.width = maxLength + 2;
     });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `datakey_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
 
-    alert("CSVファイルが作成されました。");
+    // Download Excel file
+    workbook.xlsx.writeBuffer().then((buffer) => {
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `datakey_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      alert("Excelファイルが作成されました。");
+    });
+    return;
   } catch (error) {
     console.error("Error creating datakey:", error);
     alert("エラーが発生しました。" + error.message);
