@@ -3066,22 +3066,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       // Xuất ra mảng kết quả cho tất cả các bảng
       // Format lại dữ liệu theo yêu cầu
-      function formatNOResult(result, dataBlede, tableName) {
+      function formatNOResult(result, dataBlede, tableName, tableElem) {
         const { direction, columns, rowsNO, title } = result;
-
         let key1_1 = "situmon";
         let key1_2 = rowsNO || [];
-        let key1_3 = columns || []; // Đặc biệt cho NO: key1_3 = columns
+        let key1_3 = columns || [];
+        // Logic đặc biệt cho bảng ma trận nhiều cột
+        if (tableElem) {
+          const matrixHeaders = extractMatrixHeaders(tableElem);
+          if (matrixHeaders && matrixHeaders.length > 1) {
+            key1_2 = matrixHeaders;
+            key1_3 = []; // Nếu là bảng ma trận nhiều cột, không lấy key1_3
+          }
+        }
         let type = "NO";
-
-        // Sử dụng dataBlede đã lưu từ trước
         const post_key = `${dataBlede || ""}:::${tableName}::NO::`;
-
         return {
           tableName,
           key1_1,
           key1_2,
-          key1_3, // Đặc biệt cho NO
+          key1_3,
           title,
           direction,
           type,
@@ -3089,7 +3093,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
       }
 
-      function formatTableResult(result, dataBlede, tableName) {
+      function formatTableResult(result, dataBlede, tableName, tableElem) {
         const {
           direction,
           columns,
@@ -3100,23 +3104,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           rowsSelect,
           rank,
         } = result;
-
         let key1_1 = "situmon";
         let key1_2 = [];
         let key2_1 = [];
         let type = "";
-
         if (Array.isArray(rowsSelect) && rowsSelect.length > 0) type = "SELECT";
         else if (rowsSA && rowsSA.length > 0) type = "SA";
         else if (rowsMA && rowsMA.length > 0) type = "MA";
         else if (rowsNO && rowsNO.length > 0) type = "NO";
-
-        // Xử lý đặc biệt cho NO
-        if (type === "NO") {
-          return formatNOResult(result, dataBlede, tableName);
+        // Logic đặc biệt cho bảng SA có nhiều radio trên cùng một dòng
+        if (type === "SA" && tableElem) {
+          const singleRowRadio = extractSingleRowRadioLabels(tableElem);
+          if (singleRowRadio) {
+            key2_1 = [singleRowRadio];
+            key1_2 = [];
+            return {
+              tableName,
+              key1_1,
+              key1_2,
+              key2_1,
+              title,
+              direction,
+              type,
+              post_key: `${dataBlede || ""}:::${tableName}::SA::`,
+              rank,
+            };
+          }
         }
-
-        // Logic cho các type khác (SA/MA/SELECT)
+        if (type === "NO") {
+          return formatNOResult(result, dataBlede, tableName, tableElem);
+        }
+        // ... giữ nguyên logic cũ cho các type khác
+        // ... existing code ...
         // Ưu tiên rowsSelect cho key1_2
         if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
           key1_2 = rowsSelect;
@@ -3169,7 +3188,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Format lại dữ liệu theo yêu cầu
       const formattedResults = allResults.map(
         ({ tableName, result, dataBlede }, idx) => {
-          return formatTableResult(result, dataBlede, tableName);
+          const tableElem = allNodes.filter((n) => n.tagName === "TABLE")[idx];
+          return formatTableResult(result, dataBlede, tableName, tableElem);
         }
       );
       // Gửi formattedResults thay vì allResults
@@ -3747,4 +3767,82 @@ function parseMultipleCheckboxesTable(table) {
     rowsSelect: [],
     rank: undefined,
   };
+}
+
+// Logic đặc biệt cho bảng ma trận nhiều cột (multi-header, nhiều input trên 1 dòng)
+function extractMatrixHeaders(table) {
+  // Tìm tất cả các input trên dòng dữ liệu
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  const inputRowIdx = allRows.findIndex((row) =>
+    row.querySelector("input[type=text],input[type=number]")
+  );
+  if (inputRowIdx === -1) return null;
+  const inputRow = allRows[inputRowIdx];
+  const inputCells = Array.from(inputRow.children).filter((el) =>
+    el.querySelector("input[type=text],input[type=number]")
+  );
+  if (inputCells.length <= 1) return null; // chỉ áp dụng cho bảng nhiều input trên 1 dòng
+
+  // Tìm các hàng tiêu đề phía trên dòng input
+  const headerRows = allRows.slice(0, inputRowIdx);
+  let key1_2 = [];
+  for (let col = 0; col < inputCells.length; col++) {
+    let labels = [];
+    let colPos = 0;
+    for (const row of headerRows) {
+      let cells = Array.from(row.children).filter(
+        (el) => el.tagName === "TH" || el.tagName === "TD"
+      );
+      let cellIdx = 0;
+      for (const cell of cells) {
+        let colspan = parseInt(cell.getAttribute("colspan") || "1", 10);
+        let rowspan = parseInt(cell.getAttribute("rowspan") || "1", 10);
+        if (colPos <= col && col < colPos + colspan) {
+          let text = cell.textContent
+            .replace(/\s+/g, "")
+            .replace(/[\n\r]/g, "");
+          if (
+            text &&
+            text !== "人" &&
+            text !== "→" &&
+            text !== "↓" &&
+            !text.includes("再掲")
+          ) {
+            labels.push(text);
+          }
+        }
+        colPos += colspan;
+        cellIdx++;
+      }
+      colPos = 0;
+    }
+    key1_2.push(labels.join("/"));
+  }
+  return key1_2;
+}
+
+// Logic đặc biệt cho bảng SA có nhiều radio trên cùng một dòng, không có nhiều th tiêu đề cột
+function extractSingleRowRadioLabels(table) {
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  for (const row of allRows) {
+    const radios = row.querySelectorAll("input[type=radio]");
+    if (radios.length > 1) {
+      // Lấy label cho từng radio
+      const labels = Array.from(radios).map((radio) => {
+        let label = "";
+        let node = radio.nextSibling;
+        while (
+          node &&
+          node.nodeType !== Node.TEXT_NODE &&
+          node.nodeType !== Node.ELEMENT_NODE
+        ) {
+          node = node.nextSibling;
+        }
+        if (node) label = node.textContent.replace(/\s+/g, "").trim();
+        return label;
+      });
+      return labels.filter(Boolean).join("/");
+    }
+  }
+  return null;
 }
