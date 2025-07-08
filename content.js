@@ -3625,7 +3625,8 @@ function parseTableColumnsNO(
     }
     if (!hasWakuOrBoxInTh && !hasWakuOrBoxInDiv) {
       const text = firstTh.textContent.replace(/\s+/g, " ").trim();
-      if (text) columns.push(text);
+      // Bỏ qua nếu text chứa '再掲'
+      if (text && !text.includes("再掲")) columns.push(text);
     }
   }
   return { columns, title: null };
