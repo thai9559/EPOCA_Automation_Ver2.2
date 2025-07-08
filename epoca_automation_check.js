@@ -2254,14 +2254,13 @@ async function createDatakey() {
       }
     });
 
-    // Auto width for columns
-    worksheet.columns.forEach((column) => {
-      let maxLength = 10;
-      column.eachCell({ includeEmpty: true }, (cell) => {
-        const cellValue = cell.value ? cell.value.toString() : "";
-        maxLength = Math.max(maxLength, cellValue.length);
-      });
-      column.width = maxLength + 2;
+    // Set width for columns: cột 1,2 là 10 (~80px), còn lại 15 (~120px)
+    worksheet.columns.forEach((column, idx) => {
+      if (idx === 0 || idx === 1) {
+        column.width = 10; // ~80px
+      } else {
+        column.width = 15; // ~120px
+      }
     });
 
     // Download Excel file
