@@ -3610,8 +3610,23 @@ function parseTableColumnsNO(
   let columns = [];
   const ths = table.querySelectorAll("th");
   if (ths.length > 0) {
-    const text = ths[0].textContent.replace(/\s+/g, " ").trim();
-    if (text) columns.push(text);
+    const firstTh = ths[0];
+    const thClassList = Array.from(firstTh.classList);
+    const hasWakuOrBoxInTh = thClassList.some(
+      (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+    );
+    const div = firstTh.querySelector("div");
+    let hasWakuOrBoxInDiv = false;
+    if (div) {
+      const divClassList = Array.from(div.classList);
+      hasWakuOrBoxInDiv = divClassList.some(
+        (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+      );
+    }
+    if (!hasWakuOrBoxInTh && !hasWakuOrBoxInDiv) {
+      const text = firstTh.textContent.replace(/\s+/g, " ").trim();
+      if (text) columns.push(text);
+    }
   }
   return { columns, title: null };
 }

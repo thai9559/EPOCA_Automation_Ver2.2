@@ -1950,22 +1950,15 @@ async function createDatakey() {
         }
         // 2. Xuất các dòng Q12_1_1 → Q12_1_n như cũ, nhưng không còn specialLabel ở key1_3
         if (key1_2.length > 1) {
-          key1_2.forEach((k12) => {
-            const tableName = prefix + "_" + tableNameCounter[prefix];
+          key1_2.forEach((k12, idx) => {
+            const tableName =
+              key1_2.length === 1 ? prefix : prefix + "_" + (idx + 1);
             const post_key_new = post_key.replace(
               /:::[^:]+::/,
               `:::${tableName}::`
             );
-            tableNameCounter[prefix]++;
+            // KHÔNG đưa specialLabel hoặc key1_3 vào key1 ở dòng thường
             let key1 = [key1_1, k12, "", "", ""];
-            // Không gán specialLabel vào key1_3 ở Q12_1_x
-            // Nếu key2_1_clone có giá trị dạng xếp hạng (1位, 2位, ...), và key1[2] đang rỗng thì gán '順位'
-            if (
-              key1[2] === "" &&
-              key2_1_clone.some((v) => v && /^[0-9]+位$/.test(v))
-            ) {
-              key1[2] = "順位";
-            }
             while (key1.length < 5) key1.push("");
             formattedData.push({
               post_key: post_key_new,
@@ -1974,39 +1967,36 @@ async function createDatakey() {
             });
           });
         } else {
+          // KHÔNG đưa specialLabel hoặc key1_3 vào key1 ở dòng thường
           let key1 = [key1_1, ...key1_2, "", "", ""];
-          if (
-            key1[2] === "" &&
-            key2_1_clone.some((v) => v && /^[0-9]+位$/.test(v))
-          ) {
-            key1[2] = "順位";
-          }
           while (key1.length < 5) key1.push("");
-          const tableName = prefix + "_" + tableNameCounter[prefix];
+          const tableName = prefix;
           const post_key_new = post_key.replace(
             /:::[^:]+::/,
             `:::${tableName}::`
           );
-          tableNameCounter[prefix]++;
           formattedData.push({
             post_key: post_key_new,
             key1,
             key2: key2_1_clone.slice(0, 22),
           });
         }
-        // 3. Tạo thêm các dòng Q12_2_1 → Q12_2_n với key2_1 là từng giá trị trong rank, key1_3 = specialLabel nếu có
+        // 3. Tạo thêm các dòng Q12_2_1 → Q12_2_n với key2_1 là từng giá trị trong rank, chỉ dòng này mới đẩy specialLabel vào key1-2, key1-2 ban đầu xuống key1-3
         let prefix2 = prefix.replace(/_1$/, "_2");
-        let tableNameCounter2 = 1;
-        key1_2.forEach((k12) => {
-          const tableName2 = prefix2 + "_" + tableNameCounter2;
+        key1_2.forEach((k12, idx) => {
+          const tableName2 =
+            key1_2.length === 1 ? prefix2 : prefix2 + "_" + (idx + 1);
           const post_key_new2 = post_key.replace(
             /:::[^:]+::/,
             `:::${tableName2}::`
           );
-          tableNameCounter2++;
-          let key1 = [key1_1, k12, specialLabel || "", "", ""];
+          let key1;
+          if (specialLabel) {
+            key1 = [key1_1, specialLabel, k12, "", ""];
+          } else {
+            key1 = [key1_1, k12, "", "", ""];
+          }
           while (key1.length < 5) key1.push("");
-          // key2 là toàn bộ mảng rank trên cùng một dòng
           formattedData.push({
             post_key: post_key_new2,
             key1,
@@ -2016,7 +2006,6 @@ async function createDatakey() {
         return; // Đã xử lý xong trường hợp đặc biệt, bỏ qua các logic còn lại
       }
       // --- END SPECIAL CASE ---
-
       // Nếu key2_1 chỉ có đúng 1 giá trị là '順位' hoặc '上位' và có rank, thì key2 = rank
       if (
         key2_1.length === 1 &&
@@ -2026,13 +2015,14 @@ async function createDatakey() {
       ) {
         if (key1_2.length > 1) {
           key1_2.forEach((k12, idx) => {
-            const tableName = prefix + "_" + tableNameCounter[prefix];
+            const tableName =
+              key1_2.length === 1 ? prefix : prefix + "_" + (idx + 1);
             const post_key_new = post_key.replace(
               /:::[^:]+::/,
               `:::${tableName}::`
             );
-            tableNameCounter[prefix]++;
-            let key1 = [key1_1, k12, "", "", ""];
+            // Chỉ dòng rank mới đẩy specialLabel vào key1-2, key1-2 ban đầu xuống key1-3
+            let key1 = [key1_1, key2_1[0], k12, "", ""];
             while (key1.length < 5) key1.push("");
             formattedData.push({
               post_key: post_key_new,
@@ -2041,14 +2031,13 @@ async function createDatakey() {
             });
           });
         } else {
-          let key1 = [key1_1, ...key1_2, "", "", ""];
+          let key1 = [key1_1, key2_1[0], key1_2[0] || "", "", ""];
           while (key1.length < 5) key1.push("");
-          const tableName = prefix + "_" + tableNameCounter[prefix];
+          const tableName = prefix;
           const post_key_new = post_key.replace(
             /:::[^:]+::/,
             `:::${tableName}::`
           );
-          tableNameCounter[prefix]++;
           formattedData.push({
             post_key: post_key_new,
             key1,
@@ -2075,12 +2064,11 @@ async function createDatakey() {
               .filter(Boolean)
           );
         });
-        const tableName = prefix + "_" + tableNameCounter[prefix];
+        const tableName = prefix;
         const post_key_new = post_key.replace(
           /:::[^:]+::/,
           `:::${tableName}::`
         );
-        tableNameCounter[prefix]++;
         let key1 = [key1_1, "", "", "", ""];
         formattedData.push({
           post_key: post_key_new,
@@ -2092,22 +2080,26 @@ async function createDatakey() {
       // --- END SPECIAL CASE ---
       // Logic cũ cho các trường hợp còn lại
       if (key1_2.length > 1) {
-        key1_2.forEach((k12) => {
-          const tableName = prefix + "_" + tableNameCounter[prefix];
+        key1_2.forEach((k12, idx) => {
+          const tableName =
+            key1_2.length === 1 ? prefix : prefix + "_" + (idx + 1);
           // Tạo post_key mới với số thứ tự giống tableName
           const post_key_new = post_key.replace(
             /:::[^:]+::/,
             `:::${tableName}::`
           );
-          tableNameCounter[prefix]++;
-          // Xử lý chuyển 上位 hoặc 順位 từ key2_1 sang key1_3
+          // Xử lý chuyển 上位 hoặc 順位 từ key2_1 sang key1-2, đẩy key1-2 cũ sang key1-3
           let key2_1_clone = [...key2_1];
           let key1 = [key1_1, k12, "", "", ""];
           let foundIndex = key2_1_clone.findIndex(
             (v) => v && (v.includes("上位") || v.includes("順位"))
           );
           if (foundIndex !== -1) {
-            key1[2] = key2_1_clone[foundIndex]; // key1_3
+            // Đẩy specialLabel vào key1[1], key1[1] cũ sang key1[2]
+            const specialLabel = key2_1_clone[foundIndex];
+            const oldKey1_2 = key1[1];
+            key1[1] = specialLabel;
+            key1[2] = oldKey1_2;
             key2_1_clone.splice(foundIndex, 1); // xóa khỏi key2_1
           }
           // Nếu key2_1_clone có giá trị dạng xếp hạng (1位, 2位, ...), và key1[2] đang rỗng thì gán '順位'
@@ -2131,7 +2123,11 @@ async function createDatakey() {
           (v) => v && (v.includes("上位") || v.includes("順位"))
         );
         if (foundIndex !== -1) {
-          key1[2] = key2_1_clone[foundIndex]; // key1_3
+          // Đẩy specialLabel vào key1[1], key1[1] cũ sang key1[2]
+          const specialLabel = key2_1_clone[foundIndex];
+          const oldKey1_2 = key1[1];
+          key1[1] = specialLabel;
+          key1[2] = oldKey1_2;
           key2_1_clone.splice(foundIndex, 1); // xóa khỏi key2_1
         }
         // Nếu key2_1_clone có giá trị dạng xếp hạng (1位, 2位, ...), và key1[2] đang rỗng thì gán '順位'
@@ -2142,12 +2138,11 @@ async function createDatakey() {
           key1[2] = "順位";
         }
         while (key1.length < 5) key1.push("");
-        const tableName = prefix + "_" + tableNameCounter[prefix];
+        const tableName = prefix;
         const post_key_new = post_key.replace(
           /:::[^:]+::/,
           `:::${tableName}::`
         );
-        tableNameCounter[prefix]++;
         formattedData.push({
           post_key: post_key_new,
           key1,
