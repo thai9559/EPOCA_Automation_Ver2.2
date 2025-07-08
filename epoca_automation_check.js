@@ -1931,79 +1931,82 @@ async function createDatakey() {
       }
       if (!tableNameCounter[prefix]) tableNameCounter[prefix] = startNum;
 
-      // --- SPECIAL CASE: Vừa có key2_1 vừa có rank ---
+      // --- LOGIC ĐẶC BIỆT MA có rank: xuất 2 loại dòng ---
       if (
-        key2_1.length > 0 &&
+        item.type === "MA" &&
         rank &&
-        rank.length > 0 &&
-        !(key2_1.length === 1 && (key2_1[0] === "順位" || key2_1[0] === "上位"))
+        Array.isArray(rank) &&
+        rank.length > 0
       ) {
-        // 1. Tách specialLabel (上位 hoặc 順位) khỏi key2_1
-        let key2_1_clone = [...key2_1];
-        let foundIndex = key2_1_clone.findIndex(
-          (v) => v && (v.includes("上位") || v.includes("順位"))
+        // 1. Dòng tổng hợp (Q7_1_x): key1-1 là situmon, key2-1~n là các lựa chọn
+        let key1 = [key1_1, "", "", "", ""];
+        let key2 = key1_2.slice(0, 22); // fill vào key2-1, key2-2,...
+        const post_key_new = post_key.replace(
+          /:::[^:]+::/,
+          `:::${prefix}_${tableNameCounter[prefix]}::`
         );
-        let specialLabel = "";
-        if (foundIndex !== -1 && key2_1_clone.length > 1) {
-          specialLabel = key2_1_clone[foundIndex];
-          key2_1_clone.splice(foundIndex, 1);
-        }
-        // 2. Xuất các dòng Q12_1_1 → Q12_1_n như cũ, nhưng không còn specialLabel ở key1_3
-        if (key1_2.length > 1) {
-          key1_2.forEach((k12, idx) => {
-            const tableName =
-              key1_2.length === 1 ? prefix : prefix + "_" + (idx + 1);
-            const post_key_new = post_key.replace(
-              /:::[^:]+::/,
-              `:::${tableName}::`
-            );
-            // KHÔNG đưa specialLabel hoặc key1_3 vào key1 ở dòng thường
-            let key1 = [key1_1, k12, "", "", ""];
-            while (key1.length < 5) key1.push("");
-            formattedData.push({
-              post_key: post_key_new,
-              key1,
-              key2: key2_1_clone.slice(0, 22),
-            });
+        formattedData.push({
+          post_key: post_key_new,
+          key1,
+          key2,
+        });
+        tableNameCounter[prefix]++;
+
+        // 2. Dòng từng lựa chọn (Q7_2_x): key1-1 là situmon, key1-2 là '順位' hoặc '上位', key1-3 là từng lựa chọn, key2-1~n là các giá trị rank
+        key1_2.forEach((choice, idx) => {
+          let key1 = [key1_1, key2_1[0] || "順位", choice, "", ""];
+          let key2 = rank.slice(0, 22);
+          const post_key_new2 = post_key.replace(
+            /:::[^:]+::/,
+            `:::${prefix.replace(/_1$/, "_2")}_${idx + 1}::`
+          );
+          formattedData.push({
+            post_key: post_key_new2,
+            key1,
+            key2,
           });
-        } else {
-          // KHÔNG đưa specialLabel hoặc key1_3 vào key1 ở dòng thường
-          let key1 = [key1_1, ...key1_2, "", "", ""];
-          while (key1.length < 5) key1.push("");
-          const tableName = prefix;
+        });
+        return;
+      }
+
+      // --- LOGIC ĐẶC BIỆT SA có rank: xuất 2 loại dòng ---
+      if (
+        item.type === "SA" &&
+        rank &&
+        Array.isArray(rank) &&
+        rank.length > 0
+      ) {
+        // Lấy các lựa chọn radio text, loại bỏ 上位 nếu có
+        let radioChoices = key2_1.filter((v) => v !== "上位");
+        // 1. Q12_1_*: mỗi rowsSA là 1 dòng
+        key1_2.forEach((rowSA, idx) => {
+          let key1 = [key1_1, rowSA, "", "", ""];
+          let key2 = radioChoices.slice(0, 22);
           const post_key_new = post_key.replace(
             /:::[^:]+::/,
-            `:::${tableName}::`
+            `:::${prefix}_${idx + 1}::`
           );
           formattedData.push({
             post_key: post_key_new,
             key1,
-            key2: key2_1_clone.slice(0, 22),
+            key2,
           });
-        }
-        // 3. Tạo thêm các dòng Q12_2_1 → Q12_2_n với key2_1 là từng giá trị trong rank, chỉ dòng này mới đẩy specialLabel vào key1-2, key1-2 ban đầu xuống key1-3
-        let prefix2 = prefix.replace(/_1$/, "_2");
-        key1_2.forEach((k12, idx) => {
-          const tableName2 =
-            key1_2.length === 1 ? prefix2 : prefix2 + "_" + (idx + 1);
+        });
+        // 2. Q12_2_*: mỗi lựa chọn là 1 dòng
+        key1_2.forEach((choice, idx) => {
+          let key1 = [key1_1, "上位", choice, "", ""];
+          let key2 = rank.slice(0, 22);
           const post_key_new2 = post_key.replace(
             /:::[^:]+::/,
-            `:::${tableName2}::`
+            `:::${prefix.replace(/_1$/, "_2")}_${idx + 1}::`
           );
-          let key1;
-          if (specialLabel) {
-            key1 = [key1_1, specialLabel, k12, "", ""];
-          } else {
-            key1 = [key1_1, k12, "", "", ""];
-          }
-          while (key1.length < 5) key1.push("");
           formattedData.push({
             post_key: post_key_new2,
             key1,
-            key2: rank.slice(0, 22),
+            key2,
           });
         });
-        return; // Đã xử lý xong trường hợp đặc biệt, bỏ qua các logic còn lại
+        return;
       }
       // --- END SPECIAL CASE ---
       // Nếu key2_1 chỉ có đúng 1 giá trị là '順位' hoặc '上位' và có rank, thì key2 = rank
