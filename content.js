@@ -1959,9 +1959,35 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           table.querySelectorAll("th").length === 0 &&
           table.querySelectorAll("input[type=checkbox]").length > 0
         ) {
+          // Kiểm tra xem có phải table đơn giản với nhiều checkbox trên mỗi hàng không
+          const allRows = Array.from(table.querySelectorAll("tr"));
+          let isEachCheckboxHasOwnText = false;
+
+          for (const row of allRows) {
+            const checkboxes = row.querySelectorAll("input[type=checkbox]");
+            if (checkboxes.length > 1) {
+              // Đếm số td chứa cả checkbox và text (text length > 0, không chỉ là checkbox)
+              let tdWithText = 0;
+              row.querySelectorAll("td").forEach((td) => {
+                const hasCheckbox = td.querySelector("input[type=checkbox]");
+                const text = td.textContent.replace(/\s+/g, " ").trim();
+                if (hasCheckbox && text.length > 0) tdWithText++;
+              });
+              if (tdWithText === checkboxes.length) {
+                isEachCheckboxHasOwnText = true;
+                break;
+              }
+            }
+          }
+
+          // Nếu có nhiều checkbox trên mỗi hàng và mỗi checkbox có text riêng, dùng logic mới
+          if (isEachCheckboxHasOwnText) {
+            return parseMultipleCheckboxesTable(table);
+          }
+
+          // Logic cũ cho table đơn giản
           let columns = [];
           let rowsMA = [];
-          const allRows = Array.from(table.querySelectorAll("tr"));
           let currentParentLabel = null;
           let parentLabelRemain = 0;
           allRows.forEach((row) => {
@@ -2076,13 +2102,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Hàm mới: xử lý columns khi có colspan
       function parseColumnsWithColspan(table) {
         const trList = table.querySelectorAll("tr");
-        // Bỏ qua các dòng chỉ có 1 th (tiêu đề lớn)
+        // Tìm dòng tiêu đề cột thực sự (dòng đầu có nhiều hơn 1 th)
         let firstHeaderRow = null,
           secondHeaderRow = null;
         for (let i = 0; i < trList.length; i++) {
           const ths = trList[i].querySelectorAll("th");
           if (ths.length > 1) {
             firstHeaderRow = trList[i];
+            // Dòng tiếp theo cũng có th là dòng con
             if (
               i + 1 < trList.length &&
               trList[i + 1].querySelectorAll("th").length > 0
@@ -2092,50 +2119,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             break;
           }
         }
-        if (!firstHeaderRow) {
-          // fallback: thử lấy dòng có 1 th nếu không có dòng nào nhiều th
-          for (let i = 0; i < trList.length; i++) {
-            const ths = trList[i].querySelectorAll("th");
-            if (ths.length === 1) {
-              firstHeaderRow = trList[i];
-              break;
-            }
-          }
-          if (!firstHeaderRow) return { columns: [], rowsNO: [] };
-        }
+        if (!firstHeaderRow) return [];
         const firstThs = firstHeaderRow.querySelectorAll("th");
         const secondThs = secondHeaderRow
           ? secondHeaderRow.querySelectorAll("th")
           : [];
-        const ignoreWords = ["人", "%", "回", "合計", "人数", "合計人数"];
+        const ignoreWords = [
+          "合計",
+          "人",
+          "%",
+          "回",
+          "saikei",
+          "人数",
+          "合計人数",
+        ];
 
-        let rowsNO = [];
+        let columns = [];
         let secondThIndex = 0;
         for (let i = 0; i < firstThs.length; i++) {
           const th = firstThs[i];
           let text = th.innerText.replace(/\s+/g, " ").trim();
-          console.log("parseColumnsWithColspan - th text:", text);
           if (ignoreWords.some((w) => text.includes(w))) continue;
           const colspan = th.getAttribute("colspan");
-          if (colspan && secondThs.length > 0) {
+          if (colspan) {
             for (let j = 0; j < parseInt(colspan, 10); j++) {
               const childTh = secondThs[secondThIndex++];
               if (!childTh) continue;
               let childText = childTh.innerText.replace(/\s+/g, " ").trim();
-              console.log("parseColumnsWithColspan - childTh text:", childText);
               if (!childText || ignoreWords.some((w) => childText.includes(w)))
                 continue;
-              let clean = cleanLabel(`${text}/${childText}`);
-              console.log("parseColumnsWithColspan - clean:", clean);
-              if (clean) rowsNO.push(clean);
+              columns.push(`${text}/${childText}`);
             }
           } else {
-            let clean = cleanLabel(text);
-            console.log("parseColumnsWithColspan - clean:", clean);
-            if (clean) rowsNO.push(clean);
+            columns.push(text);
           }
         }
-        return { columns: [], rowsNO };
+        return columns;
       }
 
       function parseTableColumns(
@@ -2366,8 +2385,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             th.getAttribute("colspan")
           )
         ) {
-          const { columns, rowsNO } = parseColumnsWithColspan(table);
-          return { columns, rowsNO, title: null };
+          const columns = parseColumnsWithColspan(table);
+          return { columns, title: null };
         }
 
         return { columns, title };
@@ -2642,8 +2661,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 : currentParentLabel
                 ? currentParentLabel
                 : childLabel;
-            let clean = cleanLabel(fullLabel);
-            if (clean && !rowsNO.includes(clean)) rowsNO.push(clean);
+            if (fullLabel && !rowsNO.includes(fullLabel))
+              rowsNO.push(fullLabel);
           }
         });
         // --- END NEW LOGIC ---
@@ -2830,29 +2849,100 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const simpleRadioResult = parseSimpleRadioTable(table);
         if (simpleRadioResult) return simpleRadioResult;
 
-        // Refactor: Xử lý columns và title
-        let { columns, rowsNO, title } = parseTableColumns(
-          table,
-          externalColumns,
-          forceReverse
-        );
-
-        // Refactor: Xử lý rows phức tạp
-        const parsedRows = parseTableRows(table, columns, title);
-        // Nếu rowsNO từ parseTableColumns có giá trị, ưu tiên dùng nó
-        if (rowsNO && rowsNO.length > 0) {
-          parsedRows.rowsNO = rowsNO;
+        // --- SỬ DỤNG HÀM COLUMNS MỚI THEO TYPE ---
+        let columns = [],
+          title = null;
+        let type = detectTableTypeSmart(table);
+        if (Array.isArray(type)) {
+          if (type.includes("MA")) type = "MA";
+          else if (type.includes("SA")) type = "SA";
+          else if (type.includes("NO")) type = "NO";
+          else if (type.includes("SELECT")) type = "SELECT";
+          else type = type[0];
         }
-        const { rowsSA, rowsMA, rowsSelect, rank } = parsedRows;
-        return {
+        switch (type) {
+          case "MA":
+            ({ columns, title } = parseTableColumnsMA(table));
+            break;
+          case "SA":
+            ({ columns, title } = parseTableColumnsSA(table));
+            break;
+          case "NO":
+            ({ columns, title } = parseTableColumnsNO(table));
+            break;
+          case "SELECT":
+            ({ columns, title } = parseTableColumnsSELECT(table));
+            break;
+          default:
+            // fallback: dùng hàm cũ nếu không xác định được
+            ({ columns, title } = parseTableColumns(
+              table,
+              externalColumns,
+              forceReverse
+            ));
+        }
+
+        // --- SỬ DỤNG HÀM ROWS MỚI THEO TYPE (CÓ ROWSPAN) ---
+        let rowsSA = [],
+          rowsMA = [],
+          rowsNO = [],
+          rowsSelect = [],
+          rank = undefined;
+        switch (type) {
+          case "MA":
+            ({ rowsMA } = parseTableRowsMA(table, columns, title));
+            // Nếu table có cả checkbox và select, cũng xử lý rank từ select
+            if (table.querySelectorAll("select").length > 0) {
+              const selectResult = parseTableRowsSELECT(table, columns, title);
+              rank = selectResult.rank;
+            }
+            break;
+          case "SA":
+            ({ rowsSA } = parseTableRowsSA(table, columns, title));
+            // Nếu table có cả radio và select, cũng xử lý rank từ select
+            if (table.querySelectorAll("select").length > 0) {
+              const selectResult = parseTableRowsSELECT(table, columns, title);
+              rank = selectResult.rank;
+            }
+            break;
+          case "NO":
+            ({ rowsNO } = parseTableRowsNO(table, columns, title));
+            // Nếu table có cả input và select, cũng xử lý rank từ select
+            if (table.querySelectorAll("select").length > 0) {
+              const selectResult = parseTableRowsSELECT(table, columns, title);
+              rank = selectResult.rank;
+            }
+            break;
+          case "SELECT":
+            const selectResult = parseTableRowsSELECT(table, columns, title);
+            rowsSelect = selectResult.rowsSelect;
+            rank = selectResult.rank;
+            break;
+          default:
+            ({ rowsSA, rowsMA, rowsNO, rowsSelect, rank } = parseTableRows(
+              table,
+              columns,
+              title
+            ));
+        }
+
+        // Nếu có externalColumns thì override columns ở cuối, không ảnh hưởng các logic lấy rows
+        if (externalColumns && externalColumns.length > 0) {
+          columns = forceReverse
+            ? externalColumns.slice().reverse()
+            : externalColumns.slice();
+        }
+
+        const result = {
           columns,
           title,
           rowsSA,
           rowsMA,
-          rowsNO: parsedRows.rowsNO,
+          rowsNO,
           rowsSelect,
           rank,
         };
+        return result;
       }
 
       function processTable(
@@ -3096,12 +3186,549 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Hàm loại bỏ đơn vị cuối label
-const ignoreWords = ["人", "%", "回", "合計", "人数", "合計人数"];
-function cleanLabel(label) {
-  let result = label;
-  ignoreWords.forEach((w) => {
-    result = result.replace(new RegExp(w + "$"), "").trim();
+// Hàm chung xử lý label cha/con (rowspan)
+function extractRowLabelsWithRowspan(table) {
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  // Kết quả: mảng các object { rowIndex, labels: [label1, label2, ...] }
+  const rowLabels = [];
+  for (let i = 0; i < allRows.length; i++) {
+    const row = allRows[i];
+    const cells = Array.from(row.children).filter(
+      (el) => el.tagName === "TD" || el.tagName === "TH"
+    );
+    const tds = row.querySelectorAll("td");
+    const currentRowLabels = [];
+    // Xử lý các td trong hàng hiện tại
+    tds.forEach((td) => {
+      if (td.hasAttribute("rowspan")) {
+        const label = td.textContent.replace(/\s+/g, " ").trim();
+        currentRowLabels.push(label);
+      } else {
+        const tdText = td.textContent.replace(/\s+/g, " ").trim();
+        if (tdText && !tdText.includes("→")) {
+          currentRowLabels.push(tdText);
+        }
+      }
+    });
+    // Thu thập tất cả rowspan đang hoạt động từ các hàng trước đó
+    const activeRowspans = [];
+    for (let j = 0; j < i; j++) {
+      const prevRow = allRows[j];
+      const prevCells = Array.from(prevRow.children).filter(
+        (el) => el.tagName === "TD" || el.tagName === "TH"
+      );
+      const prevTds = prevRow.querySelectorAll("td");
+      let colIndex = 0;
+      prevTds.forEach((td) => {
+        if (td.hasAttribute("rowspan")) {
+          const rowspanValue = parseInt(td.getAttribute("rowspan"), 10) || 1;
+          const startRow = j;
+          const endRow = startRow + rowspanValue - 1;
+          if (i <= endRow) {
+            const label = td.textContent.replace(/\s+/g, " ").trim();
+            activeRowspans.push({
+              colIndex: colIndex,
+              label: label,
+            });
+          }
+        }
+        colIndex++;
+      });
+    }
+    activeRowspans.sort((a, b) => a.colIndex - b.colIndex);
+    const completeLabels = [
+      ...activeRowspans.map((r) => r.label),
+      ...currentRowLabels,
+    ];
+    rowLabels.push({ rowIndex: i, labels: completeLabels });
+  }
+  return rowLabels;
+}
+
+// Hàm riêng cho MA (checkbox) với logic rowspan
+function parseTableRowsMA(table, columns, title) {
+  let rowsMA = [];
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  let currentParentLabel = null;
+  let parentLabelRemain = 0;
+
+  for (let i = 0; i < allRows.length; i++) {
+    const row = allRows[i];
+    const checkboxes = row.querySelectorAll("input[type=checkbox]");
+    if (checkboxes.length > 0) {
+      const tds = Array.from(row.querySelectorAll("td"));
+      let childLabel = "";
+      // Nếu có <td rowspan> ở đầu dòng, cập nhật label cha và số dòng còn lại
+      if (tds.length > 0 && tds[0].hasAttribute("rowspan")) {
+        currentParentLabel = tds[0].textContent.replace(/\s+/g, " ").trim();
+        parentLabelRemain = parseInt(tds[0].getAttribute("rowspan"), 10) || 1;
+        // label thuốc ở cell thứ 2
+        if (tds.length > 1) {
+          childLabel = tds[1].textContent.replace(/\s+/g, " ").trim();
+        }
+      } else if (currentParentLabel && tds.length > 0) {
+        // Các dòng tiếp theo trong rowspan: label thuốc ở cell đầu tiên
+        childLabel = tds[0].textContent.replace(/\s+/g, " ").trim();
+      } else {
+        // Không có rowspan, lấy cell đầu tiên có text
+        for (let td of tds) {
+          let text = td.textContent.replace(/\s+/g, " ").trim();
+          if (text) {
+            childLabel = text;
+            break;
+          }
+        }
+      }
+      // Nếu đang trong rowspan, giảm số dòng còn lại
+      if (parentLabelRemain > 0) {
+        parentLabelRemain--;
+      } else {
+        currentParentLabel = null;
+      }
+      // Kết hợp label cha/con
+      let fullLabel =
+        currentParentLabel && childLabel
+          ? currentParentLabel + "/" + childLabel
+          : currentParentLabel
+          ? currentParentLabel
+          : childLabel;
+      if (fullLabel && !rowsMA.includes(fullLabel)) {
+        rowsMA.push(fullLabel);
+      }
+    }
+  }
+  return { rowsMA };
+}
+
+// Hàm riêng cho SA (radio) với logic rowspan
+function parseTableRowsSA(table, columns, title) {
+  let rowsSA = [];
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  const rowLabels = extractRowLabelsWithRowspan(table);
+  for (let i = 0; i < allRows.length; i++) {
+    const row = allRows[i];
+    const radios = row.querySelectorAll("input[type=radio]");
+    if (radios.length > 0) {
+      const label = rowLabels[i].labels.join("/");
+      if (label && !rowsSA.includes(label)) {
+        rowsSA.push(label);
+      }
+    }
+  }
+  return { rowsSA };
+}
+
+// Hàm riêng cho NO (input số) với logic đầy đủ như code cũ
+function parseTableRowsNO(table, columns, title) {
+  let rowsNO = [];
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  // --- NEW LOGIC: Duy trì trạng thái label cha (rowspan) cho từng cột, tối ưu cho bảng kiểu Nhật ---
+  const numbers = table.querySelectorAll("input[type=text],input[type=number]");
+  let currentParentLabel = null;
+  let parentLabelRemain = 0;
+  allRows.forEach((row) => {
+    // Đảm bảo khai báo biến cells ở đầu mỗi lần lặp
+    const cells = Array.from(row.children).filter(
+      (el) => el.tagName === "TD" || el.tagName === "TH"
+    );
+    // Kiểm tra nếu có <th rowspan> hoặc <td rowspan> ở đầu dòng
+    if (
+      cells.length > 0 &&
+      (cells[0].tagName === "TH" || cells[0].tagName === "TD") &&
+      cells[0].hasAttribute("rowspan")
+    ) {
+      currentParentLabel = cells[0].textContent.replace(/\s+/g, " ").trim();
+      parentLabelRemain = parseInt(cells[0].getAttribute("rowspan"), 10) || 1;
+    }
+    // Nếu đang trong rowspan, giảm số dòng còn lại
+    if (parentLabelRemain > 0) {
+      parentLabelRemain--;
+    } else {
+      currentParentLabel = null;
+    }
+
+    // Xử lý input trong dòng này
+    const inputs = row.querySelectorAll("input[type=text],input[type=number]");
+    if (inputs.length > 0) {
+      // Xác định cell chứa input và cell trước đó (label con)
+      let inputCellIdx = -1;
+      for (let i = 0; i < cells.length; i++) {
+        if (cells[i].querySelector("input[type=text],input[type=number]")) {
+          inputCellIdx = i;
+          break;
+        }
+      }
+      let childLabel = "";
+      // Nếu chỉ có 1 input trên dòng, lấy label là cell đầu tiên có text (bỏ qua cell chứa input, cell mũi tên, cell rỗng)
+      if (inputs.length === 1) {
+        // Nếu dòng có <th rowspan> hoặc <td rowspan> ở đầu, lấy label con là cell thứ 2 (sau <th>/<td>)
+        if (
+          cells.length > 0 &&
+          (cells[0].tagName === "TH" || cells[0].tagName === "TD") &&
+          cells[0].hasAttribute("rowspan")
+        ) {
+          if (cells.length > 1) {
+            childLabel = cells[1].textContent.replace(/\s+/g, " ").trim();
+          }
+        } else {
+          // Logic cũ: tìm cell đầu tiên có text
+          for (let i = 0; i < cells.length; i++) {
+            if (i !== inputCellIdx) {
+              let txt = cells[i].textContent.replace(/\s+/g, " ").trim();
+              if (txt && txt !== "→" && txt !== "↓") {
+                childLabel = txt;
+                break;
+              }
+            }
+          }
+        }
+      } else {
+        // Nếu có nhiều input, ưu tiên cell trước input, nhưng nếu cell đó là '→' hoặc rỗng thì bỏ qua, lấy cell đầu tiên có text
+        if (inputCellIdx > 0) {
+          let prevTxt = cells[inputCellIdx - 1].textContent
+            .replace(/\s+/g, " ")
+            .trim();
+          if (prevTxt && prevTxt !== "→" && prevTxt !== "↓") {
+            childLabel = prevTxt;
+          }
+        }
+        if (!childLabel) {
+          for (let i = 0; i < cells.length; i++) {
+            if (i !== inputCellIdx) {
+              let txt = cells[i].textContent.replace(/\s+/g, " ").trim();
+              if (txt && txt !== "→" && txt !== "↓") {
+                childLabel = txt;
+                break;
+              }
+            }
+          }
+        }
+      }
+      // Nếu label con trùng label cha thì bỏ
+      if (
+        currentParentLabel &&
+        childLabel &&
+        currentParentLabel === childLabel
+      ) {
+        childLabel = "";
+      }
+      // Kết hợp
+      let fullLabel =
+        currentParentLabel && childLabel
+          ? currentParentLabel + "/" + childLabel
+          : currentParentLabel
+          ? currentParentLabel
+          : childLabel;
+      if (fullLabel && !rowsNO.includes(fullLabel)) rowsNO.push(fullLabel);
+    }
   });
-  return result;
+  // --- END NEW LOGIC ---
+  return { rowsNO };
+}
+
+// Hàm riêng cho SELECT
+function parseTableRowsSELECT(table, columns, title) {
+  let rowsSelect = [];
+  const selects = table.querySelectorAll("select");
+  selects.forEach((select) => {
+    const tr = select.closest("tr");
+    if (tr) {
+      const firstTd = tr.querySelector("td");
+      if (firstTd) {
+        const label = firstTd.textContent.replace(/\s+/g, " ").trim();
+        if (label && !rowsSelect.includes(label)) rowsSelect.push(label);
+      }
+    }
+  });
+  // Logic rank: chỉ xét sau khi đã duyệt xong các hàng, không ảnh hưởng các trường khác
+  let rank = undefined;
+  if (
+    selects.length >= 2 ||
+    Array.from(selects).some(
+      (sel) => sel.getAttribute("data-form") === "rank1-3"
+    )
+  ) {
+    rank = ["1位", "2位", "3位"];
+  }
+  return { rowsSelect, rank };
+}
+
+// Hàm tổng điều phối
+function parseTableRows(table, columns, title, type) {
+  switch (type) {
+    case "MA":
+      return parseTableRowsMA(table, columns, title);
+    case "SA":
+      return parseTableRowsSA(table, columns, title);
+    case "NO":
+      return parseTableRowsNO(table, columns, title);
+    case "SELECT":
+      return parseTableRowsSELECT(table, columns, title);
+    default:
+      return {
+        rowsSA: [],
+        rowsMA: [],
+        rowsNO: [],
+        rowsSelect: [],
+        rank: undefined,
+      };
+  }
+}
+
+// Hàm riêng cho MA (checkbox)
+function parseTableColumnsMA(
+  table,
+  externalColumns = null,
+  forceReverse = false
+) {
+  // Nếu có externalColumns thì dùng logic gốc
+  if (externalColumns && externalColumns.length > 0) {
+    return parseTableColumns(table, externalColumns, forceReverse);
+  }
+  // Tìm hàng có nhiều th nhất (thường là hàng tiêu đề)
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  let ths = [];
+  let maxThRow = null;
+  for (const row of allRows) {
+    const thList = Array.from(row.querySelectorAll("th"));
+    if (thList.length > ths.length) {
+      ths = thList;
+      maxThRow = row;
+    }
+  }
+  // Nếu th đầu tiên là title (có waku/box hoặc div), bỏ qua
+  if (ths.length > 0) {
+    const firstTh = ths[0];
+    const thClassList = Array.from(firstTh.classList);
+    const hasWakuOrBoxInTh = thClassList.some(
+      (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+    );
+    const div = firstTh.querySelector("div");
+    let hasWakuOrBoxInDiv = false;
+    if (div) {
+      const divClassList = Array.from(div.classList);
+      hasWakuOrBoxInDiv = divClassList.some(
+        (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+      );
+    }
+    if (hasWakuOrBoxInTh || hasWakuOrBoxInDiv) {
+      ths = ths.slice(1);
+    }
+  }
+  // Lấy columns từ các th còn lại, ưu tiên img alt, nếu không lấy text, loại bỏ th rỗng
+  let columns = ths
+    .map((th) => {
+      const img = th.querySelector("img");
+      if (img && img.alt) return img.alt.trim();
+      const text = th.textContent.replace(/\s+/g, " ").trim();
+      return text || null;
+    })
+    .filter(Boolean);
+  return { columns, title: null };
+}
+
+// Hàm riêng cho SA (radio)
+function parseTableColumnsSA(
+  table,
+  externalColumns = null,
+  forceReverse = false
+) {
+  // Nếu có externalColumns thì dùng logic gốc
+  if (externalColumns && externalColumns.length > 0) {
+    return parseTableColumns(table, externalColumns, forceReverse);
+  }
+  // Tìm hàng có nhiều th nhất (thường là hàng tiêu đề)
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  let ths = [];
+  let maxThRow = null;
+  for (const row of allRows) {
+    const thList = Array.from(row.querySelectorAll("th"));
+    if (thList.length > ths.length) {
+      ths = thList;
+      maxThRow = row;
+    }
+  }
+  // Nếu th đầu tiên là title (có waku/box hoặc div), bỏ qua
+  if (ths.length > 0) {
+    const firstTh = ths[0];
+    const thClassList = Array.from(firstTh.classList);
+    const hasWakuOrBoxInTh = thClassList.some(
+      (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+    );
+    const div = firstTh.querySelector("div");
+    let hasWakuOrBoxInDiv = false;
+    if (div) {
+      const divClassList = Array.from(div.classList);
+      hasWakuOrBoxInDiv = divClassList.some(
+        (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+      );
+    }
+    if (hasWakuOrBoxInTh || hasWakuOrBoxInDiv) {
+      ths = ths.slice(1);
+    }
+  }
+  // Lấy columns từ các th còn lại, ưu tiên img alt, nếu không lấy text, loại bỏ th rỗng
+  let columns = ths
+    .map((th) => {
+      const img = th.querySelector("img");
+      if (img && img.alt) return img.alt.trim();
+      const text = th.textContent.replace(/\s+/g, " ").trim();
+      return text || null;
+    })
+    .filter(Boolean);
+  // Nếu radio value giảm dần, đảo ngược columns
+  const radioRows = Array.from(table.querySelectorAll("tr")).filter(
+    (row) => row.querySelectorAll('input[type="radio"]').length > 1
+  );
+  if (radioRows.length > 0) {
+    const radios = Array.from(
+      radioRows[0].querySelectorAll('input[type="radio"]')
+    );
+    const values = radios
+      .map((input) => parseInt(input.value, 10))
+      .filter((v) => !isNaN(v));
+    const isDescending = values.every(
+      (val, idx, arr) => idx === 0 || val < arr[idx - 1]
+    );
+    if (isDescending) {
+      columns = columns.slice().reverse();
+    }
+  }
+  return { columns, title: null };
+}
+
+// Hàm riêng cho NO (input số)
+function parseTableColumnsNO(
+  table,
+  externalColumns = null,
+  forceReverse = false
+) {
+  // Nếu có externalColumns thì dùng logic gốc, nếu không chỉ lấy th đầu tiên
+  if (externalColumns && externalColumns.length > 0) {
+    return parseTableColumns(table, externalColumns, forceReverse);
+  }
+  let columns = [];
+  const ths = table.querySelectorAll("th");
+  if (ths.length > 0) {
+    const text = ths[0].textContent.replace(/\s+/g, " ").trim();
+    if (text) columns.push(text);
+  }
+  return { columns, title: null };
+}
+
+// Hàm riêng cho SELECT
+function parseTableColumnsSELECT(
+  table,
+  externalColumns = null,
+  forceReverse = false
+) {
+  // Nếu có externalColumns thì dùng logic gốc
+  if (externalColumns && externalColumns.length > 0) {
+    return parseTableColumns(table, externalColumns, forceReverse);
+  }
+  // Tìm hàng có nhiều th nhất (thường là hàng tiêu đề)
+  const allRows = Array.from(table.querySelectorAll("tr"));
+  let ths = [];
+  let maxThRow = null;
+  for (const row of allRows) {
+    const thList = Array.from(row.querySelectorAll("th"));
+    if (thList.length > ths.length) {
+      ths = thList;
+      maxThRow = row;
+    }
+  }
+  // Nếu th đầu tiên là title (có waku/box hoặc div), bỏ qua
+  if (ths.length > 0) {
+    const firstTh = ths[0];
+    const thClassList = Array.from(firstTh.classList);
+    const hasWakuOrBoxInTh = thClassList.some(
+      (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+    );
+    const div = firstTh.querySelector("div");
+    let hasWakuOrBoxInDiv = false;
+    if (div) {
+      const divClassList = Array.from(div.classList);
+      hasWakuOrBoxInDiv = divClassList.some(
+        (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+      );
+    }
+    if (hasWakuOrBoxInTh || hasWakuOrBoxInDiv) {
+      ths = ths.slice(1);
+    }
+  }
+  // Nếu không có th (header cột), columns phải là mảng rỗng
+  let columns = [];
+  if (ths.length > 0) {
+    columns = ths
+      .map((th) => {
+        const text = th.textContent.replace(/\s+/g, " ").trim();
+        return text || null;
+      })
+      .filter(Boolean);
+  }
+  // Không lấy label từ <td> nếu không có <th>
+  return { columns, title: null };
+}
+
+// Hàm tổng điều phối
+function parseTableColumns(table, type) {
+  switch (type) {
+    case "MA":
+      return parseTableColumnsMA(table);
+    case "SA":
+      return parseTableColumnsSA(table);
+    case "NO":
+      return parseTableColumnsNO(table);
+    case "SELECT":
+      return parseTableColumnsSELECT(table);
+    default:
+      return { columns: [], title: null };
+  }
+}
+
+// Hàm tự động xác định loại bảng (MA, SA, NO, SELECT)
+function detectTableTypeSmart(table) {
+  const types = [];
+  if (table.querySelectorAll("input[type=checkbox]").length > 0)
+    types.push("MA");
+  if (table.querySelectorAll("input[type=radio]").length > 0) types.push("SA");
+  if (table.querySelectorAll("input[type=text],input[type=number]").length > 0)
+    types.push("NO");
+  if (table.querySelectorAll("select").length > 0) types.push("SELECT");
+  if (types.length === 0) return "UNKNOWN";
+  if (types.length === 1) return types[0];
+  return types;
+}
+
+// Hàm mới: xử lý table có nhiều checkbox trên mỗi hàng
+function parseMultipleCheckboxesTable(table) {
+  let rowsMA = [];
+  const allCheckboxes = table.querySelectorAll("input[type=checkbox]");
+  allCheckboxes.forEach((checkbox) => {
+    // Tìm td chứa checkbox
+    let parentTd = checkbox.parentElement;
+    while (parentTd && parentTd.tagName !== "TD") {
+      parentTd = parentTd.parentElement;
+    }
+    if (parentTd) {
+      let label = parentTd.textContent.replace(/\s+/g, " ").trim();
+      // Loại bỏ value/id nếu có trong text
+      const checkboxText = checkbox.value || checkbox.id || "";
+      if (checkboxText && label.includes(checkboxText)) {
+        label = label.replace(checkboxText, "").trim();
+      }
+      if (label && !rowsMA.includes(label)) {
+        rowsMA.push(label);
+      }
+    }
+  });
+  return {
+    columns: [],
+    title: null,
+    rowsSA: [],
+    rowsMA,
+    rowsNO: [],
+    rowsSelect: [],
+    rank: undefined,
+  };
 }

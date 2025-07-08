@@ -2058,7 +2058,38 @@ async function createDatakey() {
         return;
       }
       // --- END SPECIAL CASE ---
-
+      // --- SPECIAL CASE: SA, key1_2 rỗng, key2_1 là mảng các chuỗi có '/' ---
+      if (
+        item.type === "SA" &&
+        (key1_2.length === 0 || (key1_2.length === 1 && !key1_2[0])) &&
+        Array.isArray(key2_1) &&
+        key2_1.every((v) => typeof v === "string" && v.includes("/"))
+      ) {
+        // Tách tất cả lựa chọn thành 1 mảng
+        let allChoices = [];
+        key2_1.forEach((str) => {
+          allChoices.push(
+            ...str
+              .split("/")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          );
+        });
+        const tableName = prefix + "_" + tableNameCounter[prefix];
+        const post_key_new = post_key.replace(
+          /:::[^:]+::/,
+          `:::${tableName}::`
+        );
+        tableNameCounter[prefix]++;
+        let key1 = [key1_1, "", "", "", ""];
+        formattedData.push({
+          post_key: post_key_new,
+          key1,
+          key2: allChoices.slice(0, 22), // fill vào key2-1, key2-2,...
+        });
+        return; // Đã xử lý xong trường hợp đặc biệt, bỏ qua các logic còn lại
+      }
+      // --- END SPECIAL CASE ---
       // Logic cũ cho các trường hợp còn lại
       if (key1_2.length > 1) {
         key1_2.forEach((k12) => {
