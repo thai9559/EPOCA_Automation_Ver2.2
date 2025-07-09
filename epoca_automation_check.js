@@ -2050,6 +2050,26 @@ async function createDatakey() {
         return;
       }
       // --- END SPECIAL CASE ---
+      // Nếu chỉ có 1 dòng thì giữ nguyên baseTableName
+      if (
+        (item.type === "SA" || item.type === "MA" || item.type === "NO") &&
+        Array.isArray(key1_2) &&
+        key1_2.length === 1
+      ) {
+        const post_key_new = post_key.replace(
+          /:::[^:]+::/,
+          `:::${baseTableName}::`
+        );
+        let key1 = [key1_1, key1_2[0], "", "", ""];
+        let key2 = key2_1.slice(0, 22);
+        formattedData.push({
+          post_key: post_key_new,
+          key1,
+          key2,
+        });
+        return;
+      }
+      // --- END SPECIAL CASE ---
       // Nếu key2_1 chỉ có đúng 1 giá trị là '順位' hoặc '上位' và có rank, thì key2 = rank
       if (
         key2_1.length === 1 &&
