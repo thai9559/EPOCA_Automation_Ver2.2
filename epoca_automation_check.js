@@ -2287,77 +2287,7 @@ async function createDatakey() {
         return;
       }
 
-      if (isAllKey2Empty) {
-        // Only style cells containing '??' with red background and bold font
-        addedRow.eachCell((cell, colNumber) => {
-          // Border for all cells
-          cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
-          };
-
-          // Check if this cell contains '??' (key2 columns start from column 9)
-          const cellValue = cell.value;
-          if (cellValue === "??") {
-            cell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFFF0000" }, // đỏ
-            };
-            cell.font = {
-              name: "Arial",
-              color: { argb: "FFFFFFFF" },
-              bold: true,
-            };
-          } else {
-            // Normal styling for non-?? cells
-            if (colNumber === 9) {
-              cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: "FFFFF2CC" }, // light yellow
-              };
-            } else if (colNumber !== 3) {
-              cell.fill = {
-                type: "pattern",
-                pattern: "solid",
-                fgColor: { argb: isEven ? "FFFFFFFF" : "FFE7F9EF" }, // white or #E7F9EF
-              };
-            }
-            cell.font = { name: "Arial" };
-          }
-
-          cell.alignment = { vertical: "middle", horizontal: "left" };
-        });
-
-        // Style post_key cell separately
-        const postKeyCell = addedRow.getCell(3);
-        if (typeof row.post_key === "string") {
-          if (row.post_key.includes("SA")) {
-            postKeyCell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFB7E1FF" }, // light blue
-            };
-          } else if (row.post_key.includes("MA")) {
-            postKeyCell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: "FFFFB7DD" }, // light pink
-            };
-          } else {
-            postKeyCell.fill = {
-              type: "pattern",
-              pattern: "solid",
-              fgColor: { argb: isEven ? "FFFFFFFF" : "FFE7F9EF" },
-            };
-          }
-          postKeyCell.font = { name: "Arial" };
-        }
-        return;
-      }
+      // Không còn logic tô đậm ô '??', chỉ để giá trị '??' bình thường
 
       addedRow.eachCell((cell, colNumber) => {
         // Border for all cells
