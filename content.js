@@ -2851,9 +2851,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         // Tạo tableName
         let tableName = "";
-        const firstInput = table.querySelector("input,select,textarea");
-        if (firstInput) {
-          tableName = firstInput.id || firstInput.name || "";
+        // Nếu là bảng checkbox thì lấy class thứ 2 của input checkbox đầu tiên (nếu có)
+        const firstCheckbox = table.querySelector('input[type="checkbox"]');
+        if (firstCheckbox && firstCheckbox.classList.length > 1) {
+          tableName = firstCheckbox.classList[1];
+        } else if (firstCheckbox && firstCheckbox.classList.length > 0) {
+          tableName = firstCheckbox.classList[0];
+        } else {
+          const firstInput = table.querySelector("input,select,textarea");
+          if (firstInput) {
+            tableName = firstInput.id || firstInput.name || "";
+          }
         }
         if (!tableName) {
           // Fallback: tìm phần tử question_detail hoặc question phía trên
