@@ -3099,7 +3099,33 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Refactor: Xử lý header table
         const headerResult = parseHeaderTable(table);
         if (headerResult && headerResult.isHeaderTable) {
-          currentImageColumns = headerResult.columns;
+          // Nếu headerResult.columns rỗng nhưng có th, lưu lại số lượng th (trừ th tiêu đề nếu có)
+          const ths = Array.from(table.querySelectorAll("th"));
+          let thCount = ths.length;
+          if (ths.length > 0) {
+            const firstTh = ths[0];
+            const thClassList = Array.from(firstTh.classList);
+            const hasWakuOrBoxInTh = thClassList.some(
+              (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+            );
+            const div = firstTh.querySelector("div");
+            let hasWakuOrBoxInDiv = false;
+            if (div) {
+              const divClassList = Array.from(div.classList);
+              hasWakuOrBoxInDiv = divClassList.some(
+                (cls) => cls.endsWith("_waku") || cls.endsWith("_box")
+              );
+            }
+            if (hasWakuOrBoxInTh || hasWakuOrBoxInDiv) thCount--;
+          }
+          if (
+            (!headerResult.columns || headerResult.columns.length === 0) &&
+            thCount > 0
+          ) {
+            currentImageColumns = Array(thCount).fill(""); // placeholder
+          } else {
+            currentImageColumns = headerResult.columns;
+          }
           currentImageTitle = headerResult.title;
           return;
         }
@@ -3111,6 +3137,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           currentImageColumns,
           currentImageTitle
         );
+        // Nếu là SA/MA mà result.columns rỗng, nhưng currentImageColumns có giá trị, thì dùng lại
+        if (
+          (result.type === "SA" || result.type === "MA") &&
+          (!result.columns || result.columns.length === 0) &&
+          currentImageColumns &&
+          currentImageColumns.length > 0
+        ) {
+          // Nếu dòng đầu tiên có radio, lấy value radio làm columns
+          let radioRow = table
+            .querySelector('tr input[type="radio"]')
+            ?.closest("tr");
+          if (radioRow) {
+            const radios = Array.from(
+              radioRow.querySelectorAll('input[type="radio"]')
+            );
+            if (radios.length === currentImageColumns.length) {
+              result.columns = radios
+                .map((r) => (r.value ? r.value.toString().trim() : ""))
+                .filter((v) => v !== "");
+            } else {
+              result.columns = currentImageColumns;
+            }
+          } else {
+            result.columns = currentImageColumns;
+          }
+        }
         allResults.push({ tableName, result, dataBlede });
         tableIdx++;
       });
@@ -3595,6 +3647,23 @@ function parseTableColumnsMA(
       return text || null;
     })
     .filter(Boolean);
+  // Nếu columns rỗng, fallback: chỉ lấy value của checkbox ở dòng đầu tiên cho từng cột
+  if (columns.length === 0 && ths.length > 1) {
+    const allRows = table.querySelectorAll("tr");
+    const firstDataRow = allRows.length > 2 ? allRows[2] : null;
+    if (firstDataRow) {
+      const tds = firstDataRow.querySelectorAll("td");
+      // Bỏ qua cột đầu tiên (label hàng), chỉ lấy các cột dữ liệu
+      for (let idx = 1; idx < tds.length; idx++) {
+        let label = "";
+        const input = tds[idx].querySelector("input[type=checkbox]");
+        if (input && input.value) {
+          label = input.value;
+        }
+        if (label) columns.push(label);
+      }
+    }
+  }
   return { columns, title: null };
 }
 
@@ -3604,11 +3673,9 @@ function parseTableColumnsSA(
   externalColumns = null,
   forceReverse = false
 ) {
-  // Nếu có externalColumns thì dùng logic gốc
   if (externalColumns && externalColumns.length > 0) {
     return parseTableColumns(table, externalColumns, forceReverse);
   }
-  // Tìm hàng có nhiều th nhất (thường là hàng tiêu đề)
   const allRows = Array.from(table.querySelectorAll("tr"));
   let ths = [];
   let maxThRow = null;
@@ -3619,7 +3686,9 @@ function parseTableColumnsSA(
       maxThRow = row;
     }
   }
-  // Nếu th đầu tiên là title (có waku/box hoặc div), bỏ qua
+  if (ths.length === 0) {
+    return { columns: [], title: null };
+  }
   if (ths.length > 0) {
     const firstTh = ths[0];
     const thClassList = Array.from(firstTh.classList);
@@ -3638,22 +3707,44 @@ function parseTableColumnsSA(
       ths = ths.slice(1);
     }
   }
-  // Lấy columns từ các th còn lại, ưu tiên img alt, nếu không lấy text, loại bỏ th rỗng và ký tự trắng
   let columns = ths
     .map((th) => {
       const img = th.querySelector("img");
       if (img && img.alt) return img.alt.trim();
-      const text = th.textContent.replace(/\s+/g, "").trim(); // bỏ hết khoảng trắng
+      const text = th.textContent.replace(/\s+/g, "").trim();
       return text || null;
     })
-    .filter((col) => col !== null && col !== "" && /^\d+$/.test(col)); // chỉ giữ số
+    .filter((col) => col !== null && col !== "" && !/^\d+$/.test(col));
 
-  // Nếu columns rỗng HOẶC tất cả columns đều là số, luôn lấy value radio
+  // SPECIAL: If columns only contains '上位' or '順位', push both that and radio values from the first data row
   if (
-    columns.length === 0 ||
-    (columns.length > 0 && columns.every((col) => /^\d+$/.test(col)))
+    columns.length === 1 &&
+    (columns[0] === "上位" || columns[0] === "順位")
   ) {
-    // Tìm dòng đầu tiên có radio
+    // Find the first row with radios
+    let radioRow = allRows.find(
+      (row) => row.querySelectorAll('input[type="radio"]').length > 0
+    );
+    if (radioRow) {
+      const radios = Array.from(
+        radioRow.querySelectorAll('input[type="radio"]')
+      );
+      const radioValues = radios
+        .map((radio) => (radio.value ? radio.value.toString().trim() : ""))
+        .filter((v) => v !== "");
+      columns = [columns[0], ...radioValues];
+    }
+  }
+  // Fallback chỉ khi có th và tất cả th là số hoặc img không alt
+  if (
+    columns.length === 0 &&
+    ths.length > 0 &&
+    ths.every((th) => {
+      const img = th.querySelector("img");
+      const text = th.textContent.replace(/\s+/g, "").trim();
+      return !img || !img.alt || /^\d+$/.test(text);
+    })
+  ) {
     let radioRow = allRows.find(
       (row) => row.querySelectorAll('input[type="radio"]').length > 0
     );
@@ -3664,25 +3755,6 @@ function parseTableColumnsSA(
       columns = radios
         .map((radio) => (radio.value ? radio.value.toString().trim() : ""))
         .filter((v) => v !== "");
-    }
-  }
-
-  // Nếu radio value giảm dần, đảo ngược columns
-  const radioRows = Array.from(table.querySelectorAll("tr")).filter(
-    (row) => row.querySelectorAll('input[type="radio"]').length > 1
-  );
-  if (radioRows.length > 0) {
-    const radios = Array.from(
-      radioRows[0].querySelectorAll('input[type="radio"]')
-    );
-    const values = radios
-      .map((input) => parseInt(input.value, 10))
-      .filter((v) => !isNaN(v));
-    const isDescending = values.every(
-      (val, idx, arr) => idx === 0 || val < arr[idx - 1]
-    );
-    if (isDescending) {
-      columns = columns.slice().reverse();
     }
   }
   return { columns, title: null };
