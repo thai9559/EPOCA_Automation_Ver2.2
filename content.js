@@ -2855,8 +2855,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (firstInput) {
           tableName = firstInput.id || firstInput.name || "";
         }
-        if (!tableName) tableName = `Bảng #${tableIdx + 1}`;
-
+        if (!tableName) {
+          // Fallback: tìm phần tử question_detail hoặc question phía trên
+          let prev = table.previousElementSibling;
+          let questionText = "";
+          while (prev) {
+            if (prev.classList && prev.classList.contains("question_detail")) {
+              questionText = prev.textContent || "";
+              break;
+            }
+            if (prev.classList && prev.classList.contains("question")) {
+              questionText = prev.textContent || "";
+              break;
+            }
+            prev = prev.previousElementSibling;
+          }
+          // Nếu không tìm thấy, thử tìm trong cha gần nhất
+          if (!questionText) {
+            const parentQ = table.closest(".question_detail, .question");
+            if (parentQ) questionText = parentQ.textContent || "";
+          }
+          // Tách mã câu hỏi sau dấu ■ (nếu có)
+          let codeMatch = questionText.match(/■\s*([A-Z0-9]+)/);
+          if (codeMatch) {
+            tableName = codeMatch[1];
+          } else if (questionText) {
+            tableName = questionText.trim().split(/\s|\n/)[0]; // fallback: lấy từ đầu
+          } else {
+            tableName = `Bảng #${tableIdx + 1}`;
+          }
+        }
         return { dataBlede, tableName };
       }
 

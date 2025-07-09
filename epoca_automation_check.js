@@ -2250,6 +2250,31 @@ async function createDatakey() {
       const addedRow = worksheet.addRow(rowData);
       // Zebra stripe: even row (ExcelJS index starts at 1, so +1 for data)
       const isEven = idx % 2 === 0;
+
+      // Kiểm tra nếu post_key không chứa type (SA, MA, NO, SELECT)
+      const hasType = ["SA", "MA", "NO", "SELECT"].some((t) =>
+        row.post_key.includes(t)
+      );
+      if (!hasType) {
+        // Tô đỏ toàn bộ dòng
+        addedRow.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFF0000" }, // đỏ
+          };
+          cell.font = { name: "Arial", color: { argb: "FFFFFFFF" } };
+          cell.alignment = { vertical: "middle", horizontal: "left" };
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+        return;
+      }
+
       addedRow.eachCell((cell, colNumber) => {
         // Border for all cells
         cell.border = {
