@@ -3610,15 +3610,35 @@ function parseTableColumnsSA(
       ths = ths.slice(1);
     }
   }
-  // Lấy columns từ các th còn lại, ưu tiên img alt, nếu không lấy text, loại bỏ th rỗng
+  // Lấy columns từ các th còn lại, ưu tiên img alt, nếu không lấy text, loại bỏ th rỗng và ký tự trắng
   let columns = ths
     .map((th) => {
       const img = th.querySelector("img");
       if (img && img.alt) return img.alt.trim();
-      const text = th.textContent.replace(/\s+/g, " ").trim();
+      const text = th.textContent.replace(/\s+/g, "").trim(); // bỏ hết khoảng trắng
       return text || null;
     })
-    .filter(Boolean);
+    .filter((col) => col !== null && col !== "" && /^\d+$/.test(col)); // chỉ giữ số
+
+  // Nếu columns rỗng HOẶC tất cả columns đều là số, luôn lấy value radio
+  if (
+    columns.length === 0 ||
+    (columns.length > 0 && columns.every((col) => /^\d+$/.test(col)))
+  ) {
+    // Tìm dòng đầu tiên có radio
+    let radioRow = allRows.find(
+      (row) => row.querySelectorAll('input[type="radio"]').length > 0
+    );
+    if (radioRow) {
+      const radios = Array.from(
+        radioRow.querySelectorAll('input[type="radio"]')
+      );
+      columns = radios
+        .map((radio) => (radio.value ? radio.value.toString().trim() : ""))
+        .filter((v) => v !== "");
+    }
+  }
+
   // Nếu radio value giảm dần, đảo ngược columns
   const radioRows = Array.from(table.querySelectorAll("tr")).filter(
     (row) => row.querySelectorAll('input[type="radio"]').length > 1
@@ -3794,54 +3814,112 @@ function parseMultipleCheckboxesTable(table) {
 
 // Logic đặc biệt cho bảng ma trận nhiều cột (multi-header, nhiều input trên 1 dòng)
 function extractMatrixHeaders(table) {
-  // Tìm tất cả các input trên dòng dữ liệu
   const allRows = Array.from(table.querySelectorAll("tr"));
+  // Tìm dòng chứa input
   const inputRowIdx = allRows.findIndex((row) =>
     row.querySelector("input[type=text],input[type=number]")
   );
   if (inputRowIdx === -1) return null;
   const inputRow = allRows[inputRowIdx];
-  const inputCells = Array.from(inputRow.children).filter((el) =>
-    el.querySelector("input[type=text],input[type=number]")
+  const inputCells = Array.from(
+    inputRow.querySelectorAll("input[type=text],input[type=number]")
   );
-  if (inputCells.length <= 1) return null; // chỉ áp dụng cho bảng nhiều input trên 1 dòng
+  if (inputCells.length === 0) return null;
 
-  // Tìm các hàng tiêu đề phía trên dòng input
-  const headerRows = allRows.slice(0, inputRowIdx);
-  let key1_2 = [];
-  for (let col = 0; col < inputCells.length; col++) {
-    let labels = [];
-    let colPos = 0;
-    for (const row of headerRows) {
-      let cells = Array.from(row.children).filter(
-        (el) => el.tagName === "TH" || el.tagName === "TD"
-      );
-      let cellIdx = 0;
-      for (const cell of cells) {
-        let colspan = parseInt(cell.getAttribute("colspan") || "1", 10);
-        let rowspan = parseInt(cell.getAttribute("rowspan") || "1", 10);
-        if (colPos <= col && col < colPos + colspan) {
-          let text = cell.textContent
-            .replace(/\s+/g, "")
-            .replace(/[\n\r]/g, "");
-          if (
-            text &&
-            text !== "人" &&
-            text !== "→" &&
-            text !== "↓" &&
-            !text.includes("再掲")
-          ) {
-            labels.push(text);
-          }
-        }
-        colPos += colspan;
-        cellIdx++;
-      }
-      colPos = 0;
+  // Tìm 2 dòng header meaningful phía trên dòng input (bỏ các dòng chỉ có th là 再掲, 人, ↓)
+  let headerCandidates = [];
+  const ignoreHeaderTexts = ["人", "↓"];
+  for (let i = 0; i < inputRowIdx; i++) {
+    const row = allRows[i];
+    const ths = Array.from(row.querySelectorAll("th"));
+    if (
+      ths.length > 0 &&
+      ths.some((th) => {
+        const txt = th.textContent.replace(/\s+/g, "");
+        return (
+          txt.length > 0 &&
+          !ignoreHeaderTexts.includes(txt) &&
+          !/再掲/.test(txt)
+        );
+      })
+    ) {
+      headerCandidates.push(row);
     }
-    key1_2.push(labels.join("/"));
   }
-  return key1_2;
+  // Lấy 2 dòng header cuối cùng
+  const headerRows = headerCandidates.slice(-2);
+  if (headerRows.length < 2) return null;
+
+  // Xác định index cột đầu tiên có input trong dòng input
+  const firstInputCellIdx = Array.from(inputRow.children).findIndex((cell) =>
+    cell.querySelector("input[type=text],input[type=number]")
+  );
+  // Khi mapping, bỏ qua firstInputCellIdx cột đầu ở header1/header2
+  const thsHeader1 = Array.from(headerRows[0].querySelectorAll("th,td")).slice(
+    firstInputCellIdx
+  );
+  const thsHeader2 = Array.from(headerRows[1].querySelectorAll("th,td")).slice(
+    firstInputCellIdx
+  );
+
+  let headerMap = [];
+  let colIdx = 0;
+  thsHeader1.forEach((th) => {
+    const text = th.textContent.replace(/\s+/g, "").trim();
+    const colspan = parseInt(th.getAttribute("colspan") || "1", 10);
+    const rowspan = parseInt(th.getAttribute("rowspan") || "1", 10);
+    for (let i = 0; i < colspan; i++) {
+      headerMap.push({
+        label: text,
+        rowspan: rowspan,
+        occupied: rowspan > 1 ? 1 : 0,
+      });
+      colIdx++;
+    }
+  });
+
+  // Giải mapping dòng dưới (header2), bỏ qua các cột đã bị chiếm bởi rowspan ở dòng trên
+  let header2Arr = [];
+  let header2Col = 0;
+  for (let i = 0; i < headerMap.length; i++) {
+    if (headerMap[i].rowspan > 1) {
+      header2Arr.push(null);
+    } else {
+      let th = thsHeader2[header2Col];
+      if (!th) {
+        header2Arr.push(null);
+        continue;
+      }
+      const text = th.textContent.replace(/\s+/g, "").trim();
+      const colspan = parseInt(th.getAttribute("colspan") || "1", 10);
+      for (let j = 0; j < colspan; j++) {
+        header2Arr.push(text);
+        i += j > 0 ? 1 : 0;
+      }
+      header2Col++;
+    }
+  }
+
+  // Mapping label cho từng input, bỏ cột 合計
+  let labels = [];
+  for (
+    let i = 0, inputCol = 0;
+    i < headerMap.length && inputCol < inputCells.length;
+    i++
+  ) {
+    if (
+      (header2Arr[i] && header2Arr[i] === "合計") ||
+      headerMap[i].label === "合計"
+    ) {
+      continue;
+    }
+    const l1 = headerMap[i].label || "";
+    const l2 = header2Arr[i] || "";
+    let label = l1 === l2 ? l1 : l1 && l2 ? l1 + "/" + l2 : l1 || l2;
+    labels.push(label);
+    inputCol++;
+  }
+  return labels;
 }
 
 // Logic đặc biệt cho bảng SA có nhiều radio trên cùng một dòng, không có nhiều th tiêu đề cột
