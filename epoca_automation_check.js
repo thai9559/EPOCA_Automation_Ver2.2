@@ -1958,7 +1958,9 @@ async function createDatakey() {
           let key2 = rank.slice(0, 22);
           const post_key_new2 = post_key.replace(
             /:::[^:]+::/,
-            `:::${prefix.replace(/_1$/, "_2")}_${idx + 1}::`
+            `:::${prefix.replace(/_1$/, "_2")}_${
+              tableNameCounter[prefix.replace(/_1$/, "_2")] || 1
+            }::`
           );
           formattedData.push({
             post_key: post_key_new2,
@@ -1966,6 +1968,11 @@ async function createDatakey() {
             key2,
           });
         });
+        // Tăng counter cho prefix_2
+        if (!tableNameCounter[prefix.replace(/_1$/, "_2")]) {
+          tableNameCounter[prefix.replace(/_1$/, "_2")] = 1;
+        }
+        tableNameCounter[prefix.replace(/_1$/, "_2")] += key1_2.length;
         return;
       }
 
@@ -1984,7 +1991,7 @@ async function createDatakey() {
           let key2 = radioChoices.slice(0, 22);
           const post_key_new = post_key.replace(
             /:::[^:]+::/,
-            `:::${prefix}_${idx + 1}::`
+            `:::${prefix}_${tableNameCounter[prefix] + idx}::`
           );
           formattedData.push({
             post_key: post_key_new,
@@ -1992,20 +1999,54 @@ async function createDatakey() {
             key2,
           });
         });
-        // 2. Q12_2_*: mỗi lựa chọn là 1 dòng
+        // Tăng counter cho prefix
+        tableNameCounter[prefix] += key1_2.length;
+
+        // 2. Q12_2_*: mỗi lựa chọn là 1 dòng, phải tăng biến đếm ngay trong vòng lặp
+        const prefix2 = prefix.replace(/_1$/, "_2");
+        if (!tableNameCounter[prefix2]) tableNameCounter[prefix2] = 1;
         key1_2.forEach((choice, idx) => {
           let key1 = [key1_1, "上位", choice, "", ""];
           let key2 = rank.slice(0, 22);
           const post_key_new2 = post_key.replace(
             /:::[^:]+::/,
-            `:::${prefix.replace(/_1$/, "_2")}_${idx + 1}::`
+            `:::${prefix2}_${tableNameCounter[prefix2]}::`
           );
           formattedData.push({
             post_key: post_key_new2,
             key1,
             key2,
           });
+          tableNameCounter[prefix2]++; // tăng ngay tại đây
         });
+        return;
+      }
+
+      // --- LOGIC CŨ: Nếu SA/MA không có rank và key1_2 có nhiều phần tử, xuất ra nhiều dòng với post_key tăng dần ---
+      if (
+        (item.type === "SA" || item.type === "MA") &&
+        (!rank || !Array.isArray(rank) || rank.length === 0) &&
+        Array.isArray(key1_2) &&
+        key1_2.length > 1
+      ) {
+        // Lấy prefix là phần trước dấu '_' cuối cùng
+        const prefixMatch = baseTableName.match(/^(.*?)(?:_\d+)?$/);
+        const prefix = prefixMatch ? prefixMatch[1] : baseTableName;
+        key1_2.forEach((k12, idx) => {
+          const post_key_new = post_key.replace(
+            /:::[^:]+::/,
+            `:::${prefix}_${tableNameCounter[prefix] + idx}::`
+          );
+          let key1 = [key1_1, k12, "", "", ""];
+          let key2 = key2_1.slice(0, 22);
+          formattedData.push({
+            post_key: post_key_new,
+            key1,
+            key2,
+          });
+        });
+        // Tăng counter sau khi xử lý xong tất cả các phần tử
+        tableNameCounter[prefix] += key1_2.length;
         return;
       }
       // --- END SPECIAL CASE ---
@@ -2019,7 +2060,9 @@ async function createDatakey() {
         if (key1_2.length > 1) {
           key1_2.forEach((k12, idx) => {
             const tableName =
-              key1_2.length === 1 ? prefix : prefix + "_" + (idx + 1);
+              key1_2.length === 1
+                ? prefix
+                : prefix + "_" + (tableNameCounter[prefix] + idx);
             const post_key_new = post_key.replace(
               /:::[^:]+::/,
               `:::${tableName}::`
@@ -2033,6 +2076,8 @@ async function createDatakey() {
               key2: rank.slice(0, 22),
             });
           });
+          // Tăng counter sau khi xử lý xong tất cả các phần tử
+          tableNameCounter[prefix] += key1_2.length;
         } else {
           let key1 = [key1_1, key2_1[0], key1_2[0] || "", "", ""];
           while (key1.length < 5) key1.push("");
@@ -2085,7 +2130,9 @@ async function createDatakey() {
       if (key1_2.length > 1) {
         key1_2.forEach((k12, idx) => {
           const tableName =
-            key1_2.length === 1 ? prefix : prefix + "_" + (idx + 1);
+            key1_2.length === 1
+              ? prefix
+              : prefix + "_" + (tableNameCounter[prefix] + idx);
           // Tạo post_key mới với số thứ tự giống tableName
           const post_key_new = post_key.replace(
             /:::[^:]+::/,
@@ -2119,6 +2166,8 @@ async function createDatakey() {
             key2: key2_1_clone.slice(0, 22),
           });
         });
+        // Tăng counter sau khi xử lý xong tất cả các phần tử
+        tableNameCounter[prefix] += key1_2.length;
       } else {
         let key2_1_clone = [...key2_1];
         let key1 = [key1_1, ...key1_2, "", "", ""];
@@ -2221,7 +2270,7 @@ async function createDatakey() {
           cell.fill = {
             type: "pattern",
             pattern: "solid",
-            fgColor: { argb: isEven ? "FFFFFFFF" : "FFD9EAD3" }, // white or light green
+            fgColor: { argb: isEven ? "FFFFFFFF" : "FFE7F9EF" }, // white or #E7F9EF
           };
         }
         // Căn lề: header đã căn giữa, dữ liệu căn trái (hoặc center nếu muốn)
@@ -2249,7 +2298,7 @@ async function createDatakey() {
           postKeyCell.fill = {
             type: "pattern",
             pattern: "solid",
-            fgColor: { argb: isEven ? "FFFFFFFF" : "FFD9EAD3" },
+            fgColor: { argb: isEven ? "FFFFFFFF" : "FFE7F9EF" },
           };
         }
         // Font Arial cho post_key

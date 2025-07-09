@@ -2806,20 +2806,43 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Tìm data-blede cho table này
         let dataBlede = "";
         try {
-          // Duyệt ngược các node trước table để tìm article.question_detail
-          let prev = table.previousElementSibling;
-          while (prev) {
-            if (prev.matches && prev.matches("article.question_detail")) {
-              dataBlede = prev.getAttribute("data-blede") || "";
-              break;
+          // ĐẶC BIỆT: Nếu table nằm trong div.align=center ngay sau article.question_detail[data-blede="100"]
+          const parentDiv = table.parentElement;
+          if (
+            parentDiv &&
+            parentDiv.tagName === "DIV" &&
+            parentDiv.getAttribute("align") === "center"
+          ) {
+            let prev = parentDiv.previousElementSibling;
+            while (prev) {
+              if (
+                prev.matches &&
+                prev.matches("article.question_detail") &&
+                prev.getAttribute("data-blede") === "100"
+              ) {
+                dataBlede = "100";
+                break;
+              }
+              prev = prev.previousElementSibling;
             }
-            prev = prev.previousElementSibling;
           }
-          // Nếu không tìm thấy, thử tìm trong cha gần nhất
+          // Nếu không phải trường hợp đặc biệt, dùng logic cũ
           if (!dataBlede) {
-            const parentArticle = table.closest("article.question_detail");
-            if (parentArticle) {
-              dataBlede = parentArticle.getAttribute("data-blede") || "";
+            // Duyệt ngược các node trước table để tìm article.question_detail
+            let prev = table.previousElementSibling;
+            while (prev) {
+              if (prev.matches && prev.matches("article.question_detail")) {
+                dataBlede = prev.getAttribute("data-blede") || "";
+                break;
+              }
+              prev = prev.previousElementSibling;
+            }
+            // Nếu không tìm thấy, thử tìm trong cha gần nhất
+            if (!dataBlede) {
+              const parentArticle = table.closest("article.question_detail");
+              if (parentArticle) {
+                dataBlede = parentArticle.getAttribute("data-blede") || "";
+              }
             }
           }
         } catch (e) {
