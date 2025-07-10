@@ -1916,6 +1916,9 @@ async function createDatakey() {
       const key1_2 = Array.isArray(item.key1_2)
         ? item.key1_2
         : [item.key1_2 || ""];
+      const key1_3 = Array.isArray(item.key1_3)
+        ? item.key1_3
+        : [item.key1_3 || ""];
       let key2_1 = Array.isArray(item.key2_1)
         ? [...item.key2_1] // clone để không ảnh hưởng gốc
         : [item.key2_1 || ""];
@@ -1932,6 +1935,8 @@ async function createDatakey() {
       if (!tableNameCounter[prefix]) tableNameCounter[prefix] = startNum;
 
       // --- LOGIC ĐẶC BIỆT MA có rank: xuất 2 loại dòng ---
+      // TẠM THỜI COMMENT LẠI LOGIC TẠO THÊM DÒNG KHI CÓ RANK
+      /*
       if (
         item.type === "MA" &&
         rank &&
@@ -1941,9 +1946,10 @@ async function createDatakey() {
         // 1. Dòng tổng hợp (Q7_1_x): key1-1 là situmon, key2-1~n là các lựa chọn
         let key1 = [key1_1, "", "", "", ""];
         let key2 = key1_2.slice(0, 22); // fill vào key2-1, key2-2,...
+        // Dòng tổng hợp giữ nguyên hậu tố ::MA::
         const post_key_new = post_key.replace(
-          /:::[^:]+::/,
-          `:::${prefix}_${tableNameCounter[prefix]}::`
+          /:::[^:]+::[A-Z]+::/,
+          `:::${prefix}_${tableNameCounter[prefix]}::MA::`
         );
         formattedData.push({
           post_key: post_key_new,
@@ -1956,11 +1962,12 @@ async function createDatakey() {
         key1_2.forEach((choice, idx) => {
           let key1 = [key1_1, key2_1[0] || "順位", choice, "", ""];
           let key2 = rank.slice(0, 22);
+          // Dòng từng lựa chọn chuyển hậu tố thành ::SA::
           const post_key_new2 = post_key.replace(
-            /:::[^:]+::/,
+            /:::[^:]+::[A-Z]+::/,
             `:::${prefix.replace(/_1$/, "_2")}_${
               tableNameCounter[prefix.replace(/_1$/, "_2")] || 1
-            }::`
+            }::SA::`
           );
           formattedData.push({
             post_key: post_key_new2,
@@ -2021,6 +2028,7 @@ async function createDatakey() {
         });
         return;
       }
+      */
 
       // --- LOGIC CŨ: Nếu SA/MA không có rank và key1_2 có nhiều phần tử, xuất ra nhiều dòng với post_key tăng dần ---
       if (
@@ -2144,6 +2152,24 @@ async function createDatakey() {
           key2: allChoices.slice(0, 22), // fill vào key2-1, key2-2,...
         });
         return; // Đã xử lý xong trường hợp đặc biệt, bỏ qua các logic còn lại
+      }
+      // --- END SPECIAL CASE ---
+      // --- SPECIAL CASE: FA type - radio + text input ---
+      if (item.type === "FA") {
+        let key1 = [
+          key1_1,
+          key1_2[0] || "その他",
+          key1_3[0] || "その他テキスト",
+          "",
+          "",
+        ];
+        while (key1.length < 5) key1.push("");
+        formattedData.push({
+          post_key: post_key,
+          key1,
+          key2: key2_1.slice(0, 22),
+        });
+        return;
       }
       // --- END SPECIAL CASE ---
       // Logic cũ cho các trường hợp còn lại
@@ -2283,8 +2309,8 @@ async function createDatakey() {
       // Zebra stripe: even row (ExcelJS index starts at 1, so +1 for data)
       const isEven = idx % 2 === 0;
 
-      // Kiểm tra nếu post_key không chứa type (SA, MA, NO, SELECT)
-      const hasType = ["SA", "MA", "NO", "SELECT"].some((t) =>
+      // Kiểm tra nếu post_key không chứa type (SA, MA, NO, SELECT, FA)
+      const hasType = ["SA", "MA", "NO", "SELECT", "FA"].some((t) =>
         row.post_key.includes(t)
       );
       if (!hasType) {

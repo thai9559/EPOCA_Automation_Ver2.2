@@ -2099,6 +2099,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return null;
       }
 
+      // Logic mới cho FA: radio + text input trong cùng td
+      function parseFATable(table) {
+        const allRows = Array.from(table.querySelectorAll("tr"));
+        const faRows = [];
+
+        allRows.forEach((row) => {
+          const tds = row.querySelectorAll("td");
+          tds.forEach((td) => {
+            const radio = td.querySelector("input[type=radio]");
+            const textInput = td.querySelector(
+              "input[type=text], input[type=number]"
+            );
+
+            // Kiểm tra có cả radio và text input trong cùng td
+            if (radio && textInput) {
+              const radioLabel = td.textContent.replace(/\s+/g, " ").trim();
+              // Lọc ra label của radio (loại bỏ text input)
+              const cleanLabel = radioLabel
+                .replace(textInput.value || "", "")
+                .trim();
+
+              faRows.push({
+                radioLabel: cleanLabel,
+                textInputId: textInput.id,
+                textInputClass: textInput.className,
+              });
+            }
+          });
+        });
+
+        if (faRows.length > 0) {
+          return {
+            columns: [],
+            title: null,
+            rowsSA: [],
+            rowsMA: [],
+            rowsNO: [],
+            rowsSelect: [],
+            rowsFA: faRows,
+            rank: undefined,
+          };
+        }
+        return null;
+      }
+
       // Hàm mới: xử lý columns khi có colspan
       function parseColumnsWithColspan(table) {
         const trList = table.querySelectorAll("tr");
@@ -2661,8 +2706,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 : currentParentLabel
                 ? currentParentLabel
                 : childLabel;
-            if (fullLabel && !rowsNO.includes(fullLabel))
-              rowsNO.push(fullLabel);
+            if (fullLabel) rowsNO.push(fullLabel);
           }
         });
         // --- END NEW LOGIC ---
@@ -2903,10 +2947,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ) {
         // Refactor: Xử lý bảng checkbox đơn giản
         const simpleCheckboxResult = parseSimpleCheckboxTable(table);
-        if (simpleCheckboxResult) return simpleCheckboxResult;
+        if (simpleCheckboxResult) {
+          console.log(
+            "☑️ Found simple checkbox table, skipping textarea logic"
+          );
+          return simpleCheckboxResult;
+        }
         // Refactor: Xử lý bảng radio đơn giản
         const simpleRadioResult = parseSimpleRadioTable(table);
-        if (simpleRadioResult) return simpleRadioResult;
+        if (simpleRadioResult) {
+          console.log("📻 Found simple radio table, skipping textarea logic");
+          return simpleRadioResult;
+        }
+        // Refactor: Xử lý bảng textarea (FA mới)
+        const textareas = table.querySelectorAll("textarea");
+        if (textareas.length > 0) {
+          console.log("🔍 Found textarea, processing as FA...");
+          const firstTextarea = textareas[0];
+          const thElement = table.querySelector("th");
+          let title = null;
+          if (thElement) {
+            title = thElement.textContent.replace(/\s+/g, " ").trim();
+            console.log("📝 Title from th:", title);
+          }
+          const result = {
+            columns: [],
+            title: title,
+            rowsSA: [],
+            rowsMA: [],
+            rowsNO: [],
+            rowsSelect: [],
+            rowsFA: [
+              {
+                textInputId: firstTextarea.id,
+                title: title,
+              },
+            ],
+            rank: undefined,
+          };
+          console.log("✅ Textarea FA result:", result);
+          return result;
+        }
+        // Refactor: Xử lý bảng FA (radio + text input)
+        const faResult = parseFATable(table);
+        if (faResult) {
+          console.log(
+            "🔧 Found FA table (radio + text input), skipping textarea logic"
+          );
+          return faResult;
+        }
 
         // --- SỬ DỤNG HÀM COLUMNS MỚI THEO TYPE ---
         let columns = [],
@@ -2972,6 +3061,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               rank = selectResult.rank;
             }
             break;
+          case "FA":
+            ({ rowsFA } = parseTableRowsFA(table, columns, title));
+            break;
           case "SELECT":
             const selectResult = parseTableRowsSELECT(table, columns, title);
             rowsSelect = selectResult.rowsSelect;
@@ -3021,6 +3113,276 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Lấy radios và checkboxes cho logic tiếp theo
         const radios = table.querySelectorAll("input[type='radio']");
         const checkboxes = table.querySelectorAll("input[type='checkbox']");
+        const selects = table.querySelectorAll("select");
+
+        // Nếu có text input với id có _T, tạo object FA riêng biệt
+        const textInputs = table.querySelectorAll(
+          "input[type=text], input[type=number]"
+        );
+        const faTextInput = Array.from(textInputs).find(
+          (input) => input.id && input.id.includes("_T")
+        );
+
+        let faObj = null;
+        if (faTextInput) {
+          console.log("🔧 Found text input with _T, creating FA object");
+          // Object FA riêng biệt
+          const { dataBlede, tableName } = getTableMetadata(table, tableIdx);
+          faObj = {
+            tableName: faTextInput.id,
+            key1_1: "situmon",
+            key1_2: ["その他"],
+            key1_3: ["その他テキスト"],
+            title: null,
+            direction: tableDirection,
+            type: "FA",
+            post_key: `${dataBlede || ""}:::${faTextInput.id}::FA::`,
+          };
+          console.log("FA Object created:", faObj);
+        }
+
+        // Logic mới: Nếu có textarea, tạo object FA riêng biệt
+        const textareas = table.querySelectorAll("textarea");
+        let textareaFaObj = null;
+        if (textareas.length > 0) {
+          console.log(
+            "🔍 Found textarea in processTable, creating textarea FA object"
+          );
+          const firstTextarea = textareas[0];
+          const { dataBlede, tableName } = getTableMetadata(table, tableIdx);
+
+          // Lấy tiêu đề từ th làm key1_2
+          let key1_2 = [];
+          const thElement = table.querySelector("th");
+          if (thElement) {
+            const title = thElement.textContent.replace(/\s+/g, " ").trim();
+            if (title) {
+              key1_2 = [title];
+              console.log("📝 Title from th for textarea:", title);
+            }
+          }
+
+          textareaFaObj = {
+            tableName: firstTextarea.id,
+            key1_1: "situmon",
+            key1_2: key1_2,
+            key1_3: [], // Rỗng cho textarea
+            title: null,
+            direction: tableDirection,
+            type: "FA",
+            post_key: `${dataBlede || ""}:::${firstTextarea.id}::FA::`,
+          };
+          console.log("Textarea FA Object created:", textareaFaObj);
+        }
+
+        // Nếu có cả checkbox và select, tách thành 2 object
+        if (checkboxes.length > 0 && selects.length > 0) {
+          // Object MA (checkbox)
+          const { dataBlede, tableName } = getTableMetadata(table, tableIdx);
+          let resultMA = getTableRowsAndColumns(table);
+          if (tableDirection) {
+            resultMA.direction = tableDirection;
+          }
+          // Object SELECT (rank)
+          const firstSelect = table.querySelector("select");
+          let selectTableName = firstSelect ? firstSelect.id : "";
+          // key1_2 giống object MA nếu có
+          let key1_2 =
+            Array.isArray(resultMA.rowsMA) && resultMA.rowsMA.length > 0
+              ? [...resultMA.rowsMA]
+              : [];
+          // Nếu không có rowsMA thì fallback lấy label từng dòng chứa select
+          if (key1_2.length === 0) {
+            selects.forEach((select) => {
+              const tr = select.closest("tr");
+              if (tr) {
+                const firstTd = tr.querySelector("td");
+                if (firstTd) {
+                  const label = firstTd.textContent.replace(/\s+/g, " ").trim();
+                  if (label && !key1_2.includes(label)) key1_2.push(label);
+                }
+              }
+            });
+          }
+          // Rank mặc định
+          const rankArr = ["1位", "2位", "3位"];
+          // Lấy key2_1 từ resultMA.columns để đảm bảo consistency với object MA
+          let key2_1 =
+            resultMA.columns && resultMA.columns.length > 0
+              ? resultMA.columns
+              : ["順位"];
+          const selectObj = {
+            tableName: selectTableName,
+            key1_1: "situmon",
+            key1_2,
+            key2_1: key2_1,
+            title: null,
+            direction: tableDirection,
+            type: "SELECT",
+            post_key: `${dataBlede || ""}:::${selectTableName}::SELECT::`,
+            rank: rankArr,
+          };
+
+          // Nếu có FA object hoặc textarea FA object, trả về cả 3 objects
+          if (faObj || textareaFaObj) {
+            const faObjectToUse = faObj || textareaFaObj;
+            console.log("Returning with FA object:", faObjectToUse);
+            return [
+              { tableName, result: resultMA, dataBlede },
+              { tableName: selectTableName, result: selectObj, dataBlede },
+              {
+                tableName: faObjectToUse.tableName,
+                result: faObjectToUse,
+                dataBlede,
+              },
+            ];
+          }
+
+          return [
+            { tableName, result: resultMA, dataBlede },
+            { tableName: selectTableName, result: selectObj, dataBlede },
+          ];
+        }
+
+        // Nếu có cả radio và select, tách thành 2 object
+        if (radios.length > 0 && selects.length > 0) {
+          // Object SA (radio)
+          const { dataBlede, tableName } = getTableMetadata(table, tableIdx);
+          let resultSA = getTableRowsAndColumns(table);
+          if (tableDirection) {
+            resultSA.direction = tableDirection;
+          }
+          // Object SELECT (rank)
+          const firstSelect = table.querySelector("select");
+          let selectTableName = firstSelect ? firstSelect.id : "";
+          // key1_2 giống object SA nếu có
+          let key1_2 =
+            Array.isArray(resultSA.rowsSA) && resultSA.rowsSA.length > 0
+              ? [...resultSA.rowsSA]
+              : [];
+          // Nếu không có rowsSA thì fallback lấy label từng dòng chứa select
+          if (key1_2.length === 0) {
+            selects.forEach((select) => {
+              const tr = select.closest("tr");
+              if (tr) {
+                const firstTd = tr.querySelector("td");
+                if (firstTd) {
+                  const label = firstTd.textContent.replace(/\s+/g, " ").trim();
+                  if (label && !key1_2.includes(label)) key1_2.push(label);
+                }
+              }
+            });
+          }
+          // Rank mặc định
+          const rankArr = ["1位", "2位", "3位"];
+          // Lấy key2_1 từ resultSA.columns để đảm bảo consistency với object SA
+          let key2_1 =
+            resultSA.columns && resultSA.columns.length > 0
+              ? resultSA.columns
+              : ["上位"];
+          const selectObj = {
+            tableName: selectTableName,
+            key1_1: "situmon",
+            key1_2,
+            key2_1: key2_1,
+            title: null,
+            direction: tableDirection,
+            type: "SELECT",
+            post_key: `${dataBlede || ""}:::${selectTableName}::SELECT::`,
+            rank: rankArr,
+          };
+          // Nếu có FA object hoặc textarea FA object, trả về cả 3 objects
+          if (faObj || textareaFaObj) {
+            const faObjectToUse = faObj || textareaFaObj;
+            console.log("Returning with FA object:", faObjectToUse);
+            return [
+              { tableName, result: resultSA, dataBlede },
+              { tableName: selectTableName, result: selectObj, dataBlede },
+              {
+                tableName: faObjectToUse.tableName,
+                result: faObjectToUse,
+                dataBlede,
+              },
+            ];
+          }
+
+          return [
+            { tableName, result: resultSA, dataBlede },
+            { tableName: selectTableName, result: selectObj, dataBlede },
+          ];
+        }
+
+        // Nếu có cả input text và select, tách thành 2 object
+        const inputs = table.querySelectorAll(
+          "input[type='text'],input[type='number']"
+        );
+        if (inputs.length > 0 && selects.length > 0) {
+          // Object NO (input text)
+          const { dataBlede, tableName } = getTableMetadata(table, tableIdx);
+          let resultNO = getTableRowsAndColumns(table);
+          if (tableDirection) {
+            resultNO.direction = tableDirection;
+          }
+          // Object SELECT (rank)
+          const firstSelect = table.querySelector("select");
+          let selectTableName = firstSelect ? firstSelect.id : "";
+          // key1_2 giống object NO nếu có
+          let key1_2 =
+            Array.isArray(resultNO.rowsNO) && resultNO.rowsNO.length > 0
+              ? [...resultNO.rowsNO]
+              : [];
+          // Nếu không có rowsNO thì fallback lấy label từng dòng chứa select
+          if (key1_2.length === 0) {
+            selects.forEach((select) => {
+              const tr = select.closest("tr");
+              if (tr) {
+                const firstTd = tr.querySelector("td");
+                if (firstTd) {
+                  const label = firstTd.textContent.replace(/\s+/g, " ").trim();
+                  if (label && !key1_2.includes(label)) key1_2.push(label);
+                }
+              }
+            });
+          }
+          // Rank mặc định
+          const rankArr = ["1位", "2位", "3位"];
+          // Lấy key2_1 từ resultNO.columns để đảm bảo consistency với object NO
+          let key2_1 =
+            resultNO.columns && resultNO.columns.length > 0
+              ? resultNO.columns
+              : ["上位"];
+          const selectObj = {
+            tableName: selectTableName,
+            key1_1: "situmon",
+            key1_2,
+            key2_1: key2_1,
+            title: null,
+            direction: tableDirection,
+            type: "SELECT",
+            post_key: `${dataBlede || ""}:::${selectTableName}::SELECT::`,
+            rank: rankArr,
+          };
+
+          // Nếu có FA object hoặc textarea FA object, trả về cả 3 objects
+          if (faObj || textareaFaObj) {
+            const faObjectToUse = faObj || textareaFaObj;
+            console.log("Returning with FA object:", faObjectToUse);
+            return [
+              { tableName, result: resultNO, dataBlede },
+              { tableName: selectTableName, result: selectObj, dataBlede },
+              {
+                tableName: faObjectToUse.tableName,
+                result: faObjectToUse,
+                dataBlede,
+              },
+            ];
+          }
+
+          return [
+            { tableName, result: resultNO, dataBlede },
+            { tableName: selectTableName, result: selectObj, dataBlede },
+          ];
+        }
 
         // Refactor: Lấy metadata cho table
         const { dataBlede, tableName } = getTableMetadata(table, tableIdx);
@@ -3083,6 +3445,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           result.columns = currentImageColumns;
         }
         console.log(result, result);
+
+        // Nếu có FA object (radio + text input _T), trả về cả SA và FA
+        if (faObj) {
+          return [
+            { tableName, result, dataBlede },
+            { tableName: faObj.tableName, result: faObj, dataBlede },
+          ];
+        }
+        // Nếu có textarea FA object (và KHÔNG có faObj), chỉ trả về object FA
+        if (textareaFaObj) {
+          return {
+            tableName: textareaFaObj.tableName,
+            result: textareaFaObj,
+            dataBlede,
+          };
+        }
         return { tableName, result, dataBlede };
       }
 
@@ -3139,39 +3517,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         // Refactor: Xử lý table processing
-        const { tableName, result, dataBlede } = processTable(
+        const processResult = processTable(
           table,
           tableIdx,
           currentImageColumns,
           currentImageTitle
         );
-        // Nếu là SA/MA mà result.columns rỗng, nhưng currentImageColumns có giá trị, thì dùng lại
-        if (
-          (result.type === "SA" || result.type === "MA") &&
-          (!result.columns || result.columns.length === 0) &&
-          currentImageColumns &&
-          currentImageColumns.length > 0
-        ) {
-          // Nếu dòng đầu tiên có radio, lấy value radio làm columns
-          let radioRow = table
-            .querySelector('tr input[type="radio"]')
-            ?.closest("tr");
-          if (radioRow) {
-            const radios = Array.from(
-              radioRow.querySelectorAll('input[type="radio"]')
-            );
-            if (radios.length === currentImageColumns.length) {
-              result.columns = radios
-                .map((r) => (r.value ? r.value.toString().trim() : ""))
-                .filter((v) => v !== "");
-            } else {
-              result.columns = currentImageColumns;
-            }
-          } else {
-            result.columns = currentImageColumns;
-          }
+        if (Array.isArray(processResult)) {
+          processResult.forEach(({ tableName, result, dataBlede }) => {
+            allResults.push({ tableName, result, dataBlede, tableElem: table });
+          });
+        } else {
+          const { tableName, result, dataBlede } = processResult;
+          allResults.push({ tableName, result, dataBlede, tableElem: table });
         }
-        allResults.push({ tableName, result, dataBlede });
         tableIdx++;
       });
 
@@ -3181,7 +3540,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const { direction, columns, rowsNO, title } = result;
         let key1_1 = "situmon";
         let key1_2 = rowsNO || [];
-        let key1_3 = columns || [];
+        let key1_3 = []; // Luôn định nghĩa key1_3
         // Logic đặc biệt cho bảng ma trận nhiều cột
         if (tableElem) {
           const matrixHeaders = extractMatrixHeaders(tableElem);
@@ -3204,7 +3563,69 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         };
       }
 
+      function formatFAResult(result, dataBlede, tableName, tableElem) {
+        const { direction, rowsFA, title, key1_2: k12, key1_3: k13 } = result;
+        let key1_1 = "situmon";
+        let key1_2 = k12 || ["その他"];
+        let key1_3 = k13 || ["その他テキスト"];
+        let type = "FA";
+
+        // Lấy tableName từ text input id (giữ nguyên id)
+        let faTableName = tableName;
+        if (Array.isArray(rowsFA) && rowsFA.length > 0) {
+          const firstFA = rowsFA[0];
+          if (firstFA.textInputId) {
+            faTableName = firstFA.textInputId;
+          }
+          // Logic mới cho textarea: nếu có title thì dùng làm key1_2
+          if (firstFA.title && firstFA.title.trim()) {
+            key1_2 = [firstFA.title];
+            key1_3 = [];
+          }
+        }
+
+        const post_key = `${dataBlede || ""}:::${faTableName}::FA::`;
+        return {
+          tableName: faTableName,
+          key1_1,
+          key1_2,
+          key1_3,
+          title,
+          direction,
+          type,
+          post_key,
+        };
+      }
+
       function formatTableResult(result, dataBlede, tableName, tableElem) {
+        // Debug log
+        console.log(
+          "formatTableResult: tableName=",
+          tableName,
+          "tableElem=",
+          tableElem
+        );
+        if (tableElem) {
+          console.log(
+            "  radio count:",
+            tableElem.querySelectorAll('input[type="radio"]').length
+          );
+          console.log(
+            "  checkbox count:",
+            tableElem.querySelectorAll('input[type="checkbox"]').length
+          );
+          console.log(
+            "  text count:",
+            tableElem.querySelectorAll(
+              'input[type="text"],input[type="number"]'
+            ).length
+          );
+          console.log(
+            "  select count:",
+            tableElem.querySelectorAll("select").length
+          );
+        }
+        // Thêm lại destructuring để tránh lỗi
         const {
           direction,
           columns,
@@ -3213,26 +3634,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           rowsNO,
           title,
           rowsSelect,
+          rowsFA,
           rank,
         } = result;
         let key1_1 = "situmon";
         let key1_2 = [];
+        let key1_3 = []; // Luôn định nghĩa key1_3
         let key2_1 = [];
-        let type = "";
-        if (Array.isArray(rowsSelect) && rowsSelect.length > 0) type = "SELECT";
-        else if (rowsSA && rowsSA.length > 0) type = "SA";
-        else if (rowsMA && rowsMA.length > 0) type = "MA";
-        else if (rowsNO && rowsNO.length > 0) type = "NO";
-        // Logic đặc biệt cho bảng SA có nhiều radio trên cùng một dòng
+        let type = result.type || "";
+        if (!type) {
+          if (Array.isArray(rowsSelect) && rowsSelect.length > 0)
+            type = "SELECT";
+          else if (rowsSA && rowsSA.length > 0) type = "SA";
+          else if (rowsMA && rowsMA.length > 0) type = "MA";
+          else if (rowsNO && rowsNO.length > 0) type = "NO";
+          else if (Array.isArray(rowsFA) && rowsFA.length > 0) type = "FA";
+          // Fallback: Nếu có radio và không có checkbox/text/select thì là SA
+          else if (
+            tableElem &&
+            tableElem.querySelectorAll('input[type="radio"]').length > 0 &&
+            tableElem.querySelectorAll('input[type="checkbox"]').length === 0 &&
+            tableElem.querySelectorAll(
+              'input[type="text"],input[type="number"]'
+            ).length === 0 &&
+            tableElem.querySelectorAll("select").length === 0
+          ) {
+            type = "SA";
+          }
+        }
+        // Logic mới cho SA 1 dòng radio, 2 dòng header
         if (type === "SA" && tableElem) {
-          const singleRowRadio = extractSingleRowRadioLabels(tableElem);
-          if (singleRowRadio) {
-            key2_1 = [singleRowRadio];
-            key1_2 = [];
+          const allRows = Array.from(tableElem.querySelectorAll("tr"));
+          const headerRows = allRows.filter(
+            (row) => row.querySelectorAll("th").length > 0
+          );
+          const radioRows = allRows.filter(
+            (row) => row.querySelectorAll('input[type="radio"]').length > 1
+          );
+          if (headerRows.length > 1 && radioRows.length === 1) {
+            // key1_2: tiêu đề lớn (dòng đầu tiên)
+            let key1_2 = [headerRows[0].textContent.replace(/\s+/g, "").trim()];
+            // key2_1: các lựa chọn nhỏ (dòng thứ 2)
+            let key2_1 = Array.from(headerRows[1].querySelectorAll("th")).map(
+              (th) => th.textContent.replace(/\s+/g, "").trim()
+            );
             return {
               tableName,
               key1_1,
               key1_2,
+              key1_3,
               key2_1,
               title,
               direction,
@@ -3241,14 +3691,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
               rank,
             };
           }
+          // ... giữ nguyên logic cũ phía dưới ...
         }
         if (type === "NO") {
           return formatNOResult(result, dataBlede, tableName, tableElem);
         }
-        // ... giữ nguyên logic cũ cho các type khác
-        // ... existing code ...
-        // Ưu tiên rowsSelect cho key1_2
-        if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
+        if (type === "FA") {
+          return formatFAResult(result, dataBlede, tableName, tableElem);
+        }
+        // Nếu là SELECT và result.key1_2 có giá trị thì dùng luôn
+        if (
+          type === "SELECT" &&
+          Array.isArray(result.key1_2) &&
+          result.key1_2.length > 0
+        ) {
+          key1_2 = result.key1_2;
+        } else if (Array.isArray(rowsSelect) && rowsSelect.length > 0) {
           key1_2 = rowsSelect;
         } else if (direction === "vertical") {
           key1_2 = columns;
@@ -3265,6 +3723,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           key2_1 = columns;
         } else {
           key2_1 = columns;
+        }
+
+        // Đặc biệt cho SELECT: nếu có result.key2_1 thì dùng luôn
+        if (
+          type === "SELECT" &&
+          result.key2_1 &&
+          Array.isArray(result.key2_1)
+        ) {
+          key2_1 = result.key2_1;
         }
 
         // Nếu là SA/MA mà không có columns thì key1_2 = [], key2_1 = rowsSA/rowsMA
@@ -3286,6 +3753,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           tableName,
           key1_1,
           key1_2,
+          key1_3,
           key2_1,
           title,
           direction,
@@ -3298,8 +3766,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Xuất ra mảng kết quả cho tất cả các bảng
       // Format lại dữ liệu theo yêu cầu
       const formattedResults = allResults.map(
-        ({ tableName, result, dataBlede }, idx) => {
-          const tableElem = allNodes.filter((n) => n.tagName === "TABLE")[idx];
+        ({ tableName, result, dataBlede, tableElem }) => {
           return formatTableResult(result, dataBlede, tableName, tableElem);
         }
       );
@@ -3550,7 +4017,7 @@ function parseTableRowsNO(table, columns, title) {
           : currentParentLabel
           ? currentParentLabel
           : childLabel;
-      if (fullLabel && !rowsNO.includes(fullLabel)) rowsNO.push(fullLabel);
+      if (fullLabel) rowsNO.push(fullLabel);
     }
   });
   // --- END NEW LOGIC ---
@@ -3582,6 +4049,37 @@ function parseTableRowsSELECT(table, columns, title) {
     rank = ["1位", "2位", "3位"];
   }
   return { rowsSelect, rank };
+}
+
+// Hàm riêng cho FA (radio + text input)
+function parseTableRowsFA(table, columns, title) {
+  let rowsFA = [];
+  const allRows = Array.from(table.querySelectorAll("tr"));
+
+  allRows.forEach((row) => {
+    const tds = row.querySelectorAll("td");
+    tds.forEach((td) => {
+      const radio = td.querySelector("input[type=radio]");
+      const textInput = td.querySelector(
+        "input[type=text], input[type=number]"
+      );
+
+      // Kiểm tra có cả radio và text input trong cùng td
+      if (radio && textInput) {
+        const radioLabel = td.textContent.replace(/\s+/g, " ").trim();
+        // Lọc ra label của radio (loại bỏ text input)
+        const cleanLabel = radioLabel.replace(textInput.value || "", "").trim();
+
+        rowsFA.push({
+          radioLabel: cleanLabel,
+          textInputId: textInput.id,
+          textInputClass: textInput.className,
+        });
+      }
+    });
+  });
+
+  return { rowsFA };
 }
 
 // Hàm tổng điều phối
